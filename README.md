@@ -3,7 +3,6 @@
 **A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F407),
 built on a bare-metal boot environment written from scratch.**
 
-Built so the worst case is small and measurable, not so the average is fast.
 Measured head to head against FreeRTOS on the same hardware model, the same boot
 layer and the same workload.
 
