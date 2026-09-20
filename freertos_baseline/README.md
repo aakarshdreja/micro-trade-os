@@ -12,10 +12,8 @@ way FreeRTOS builds one. It is a fair control for isolating *the cost of a
 lock*, but it is **not FreeRTOS** and was never claimed to be. A project whose
 objective is stated against FreeRTOS has to measure FreeRTOS.
 
-As it turns out, measuring both was worth doing: the in-house baseline lands
-within ~1% of the real kernel on the IPC benchmark, which is what justifies
-treating it as a proxy in the first place. That agreement is a result, not an
-assumption.
+The in-house baseline lands within ~1% of the real kernel on the IPC benchmark.
+That is the measured justification for treating it as a proxy.
 
 ## What is held identical
 
@@ -36,7 +34,7 @@ FreeRTOS is configured to **match**, not to be handicapped: 8 MHz, 1 kHz tick,
 preemptive with time-slicing, 8 priorities, `configUSE_PORT_OPTIMISED_TASK_SELECTION`
 on (the CLZ-based selection our kernel also uses), priority-inheritance mutexes
 on. Trace and runtime-stats facilities are off, because our kernel is not paying
-for them either. Beating a crippled configuration would prove nothing.
+for them either.
 
 ## Layout
 
@@ -72,8 +70,7 @@ qemu-system-arm -machine olimex-stm32-h405 -nographic -icount shift=7 \
 ```
 
 Experiment 2 has only one phase here. FreeRTOS provides no way to suppress its
-scheduler tick for a critical section, and that absence is precisely what the
-comparison is about.
+scheduler tick for a critical section. That absence is the comparison.
 
 ## Results
 

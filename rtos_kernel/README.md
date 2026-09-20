@@ -294,7 +294,7 @@ Three subjects differing in one variable, the synchronisation strategy:
 | C | `spsc_ca_t`, cache-partitioned + shadow indices | B vs C: the cost of the peer-index load |
 
 The baseline is built **here**, on this kernel, at the same `-O2` and clock, and
-is given its most favourable honest form (its fast path skips the semaphores
+is given its most favourable form (its fast path skips the semaphores
 entirely). A number quoted from another project would confound compiler,
 clock and kernel all at once.
 
@@ -303,7 +303,7 @@ on the access pattern, not a property of the queue:
 
 * **Ping-pong (depth 1)**: The queue is empty at every receive, so the shadow
   is stale *every* time. The optimisation cannot win here; it can only add a
-  branch. This adversarial case is reported, not hidden.
+  branch. This adversarial case is measured and reported.
 * **Burst (depth 8)**: Fill several, drain several, as a real feed handler
   does. One refresh is amortised over eight operations. This is the case the
   design targets.

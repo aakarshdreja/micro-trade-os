@@ -6,8 +6,8 @@ kept separate from the results documents, so those report measurements only.
 Each entry records the symptom, the root cause, the fix, and how the fix was
 confirmed.
 
-One thing links all of them. None announced itself. Every one produced
-confident-looking output rather than an obvious failure.
+None of these announced itself. Each produced confident-looking output rather
+than an obvious failure.
 
 ---
 

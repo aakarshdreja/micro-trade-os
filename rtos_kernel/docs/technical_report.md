@@ -476,7 +476,7 @@ Experiment 3 measures both cases:
   empty at the start of every receive, so the consumer's shadow is stale *every*
   time and must be refreshed every time. The optimisation cannot win here; it
   can only add a branch and a store. This adversarial case is measured and
-  reported, not hidden.
+  measured and reported.
 - **Burst (depth 8).** Fill several slots, then drain them. What a real feed
   handler does when an ISR or DMA completion deposits a run of records. One
   refresh is amortised over eight operations. This is the case the design
@@ -546,7 +546,7 @@ A claim of improvement is worth exactly as much as the baseline it is measured
 against. The conventional design is therefore **built here**
 (`queue_baseline.c`), on this kernel, at the same `-O2` and the same clock,
 rather than quoted from another project, which would confound compiler,
-kernel, clock and workload all at once. It is also not strawmanned: it uses the
+kernel, clock and workload all at once. It uses the
 same tight copy loop as the lock-free rings, and its fast path skips the
 semaphores entirely, which is the most favourable honest form of the design.
 The only variable that differs between subjects is the synchronisation strategy.
@@ -765,7 +765,7 @@ argument for its workload, meeting the objectives set out for it.
 
 The kernel is built with `arm-none-eabi-gcc` at `-O2`, `-nostdlib`,
 `-nostartfiles`, `--gc-sections`, and a custom linker script. Building a correct
-freestanding image surfaced three non-obvious issues that are worth recording, as
+freestanding image surfaced three non-obvious issues, as
 each is a trap that silently breaks bare-metal code:
 
 1. **Self-recursive `memset`/`memcpy`.** At `-O2`, GCC's

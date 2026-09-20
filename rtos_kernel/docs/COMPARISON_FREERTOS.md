@@ -28,8 +28,8 @@ selection our scheduler uses. Priority-inheritance mutexes are on. Trace and
 runtime-stats facilities are off, because our kernel does not pay for them
 either.
 
-The ARM_CM3 port is used on purpose. It targets Cortex-M without the FPU, which
-matches our soft-float build. ARM_CM4F would save FPU context on every switch.
+ARM_CM3 rather than ARM_CM4F: it targets Cortex-M without the FPU, matching our
+soft-float build. ARM_CM4F would save FPU context on every switch.
 Our kernel does not save it. That would be a difference in work done, not a
 difference in kernel design.
 
@@ -58,17 +58,14 @@ test.
 **Against FreeRTOS, poll mode cuts the worst-case block from 29,568 to 3,828.
 That is a 7.7x improvement. Peak-to-peak jitter drops from 26,407 units to 1.**
 
-Two honest points, both visible in the same table.
+**FreeRTOS is slightly faster on the uninterrupted path**: 3,161 units against
+our 3,354, about 6%. This kernel is not faster at raw execution. The claim is
+determinism.
 
-First, **FreeRTOS is slightly faster on the uninterrupted path**. It takes 3,161
-units against our 3,354, so about 6% faster. Our kernel is not the faster kernel
-at raw execution. We do not claim it is. The claim is determinism.
-
-Second, **our tick-driven mode behaves much like FreeRTOS**. Peak-to-peak is
-27,806 against 26,407. Worst case is 31,160 against 29,568. This is a good
-result, not a disappointment. It shows the Phase A baseline in our own testbed
-is an honest stand-in for a real RTOS. So the Phase A to Phase B improvement is
-real, and not an artefact of a weak in-house baseline.
+**Our tick-driven mode matches FreeRTOS**: 27,806 against 26,407 peak-to-peak,
+31,160 against 29,568 worst case. This makes the Phase A baseline in our own
+testbed an honest stand-in for a real RTOS, so the Phase A to Phase B
+improvement is not an artefact of a weak in-house baseline.
 
 The gap on the minimum is 3,827 against 3,354. That 473-unit difference is the
 cost of the poll machinery itself. It is what buys the collapse in the other two
@@ -96,22 +93,19 @@ bin-quantised percentile.
 | Our cache-partitioned SPSC | 7,340 | 7,329 |
 
 **Against FreeRTOS, our lock-free queue is 1.28x faster on ping-pong and 1.29x
-faster on burst.** Both sides passed their correctness gates, which check
-round-trip byte integrity, FIFO ordering, and full and empty edges.
+faster on burst.** Both sides passed their correctness gates: round-trip byte
+integrity, FIFO ordering, full and empty edges.
 
-Two further findings.
+**Our in-house baseline is within 0.5% of real FreeRTOS**: 9,245 against 9,290.
+That is the measured justification for using it as a proxy.
 
-**Our in-house baseline is within 0.5% of real FreeRTOS**, at 9,245 against
-9,290. That is why it was reasonable to use it as a proxy. It is a measured
-result, not an assumption.
+**Cache-line partitioning measures at parity** with the plain lock-free ring:
+7,340 against 7,285. Expected on this part. The Cortex-M4 has no data cache and
+single-cycle SRAM, so the load the shadow indices remove costs about as much as
+the branch and store that replace it. The partitioning is a portability and
+multi-core property, not a Cortex-M4 speed-up.
 
-**Cache-line partitioning measures at parity** with the plain lock-free ring, at
-7,340 against 7,285. This is the expected result on this part. The Cortex-M4 has
-no data cache and single-cycle SRAM. The load that shadow indices remove costs
-about as much as the branch and store that replace it. The partitioning is a
-portability and multi-core property. We do not claim it as a Cortex-M4 speed-up.
-
-### The structural difference matters more than the 1.28x
+### The structural difference
 
 Per 64-byte message:
 
@@ -172,11 +166,8 @@ plus hardware stacking. That is the prediction to check against.
 | Lower context-switch cost than FreeRTOS | **Not established** | emulation cannot resolve it, needs hardware |
 | Cache-line partitioning gains on Cortex-M4 | **Not supported, as expected** | parity, because the part has no data cache |
 
-The objective is determinism, not throughput. On that objective, the two jitter
-results and the structural IPC result are the substance.
-
-The two rows marked "not supported" are reported on purpose. A comparison that
-only lists its wins is not a measurement.
+The objective is determinism, not throughput. The jitter results and the
+structural IPC result address it directly.
 
 ---
 
