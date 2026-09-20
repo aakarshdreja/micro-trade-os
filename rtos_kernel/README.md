@@ -1,8 +1,5 @@
 # A Deterministic: Low-Latency RTOS Kernel for ARM Cortex-M4
 
-**B.Tech Project (ELD411), Department of Electrical Engineering, IIT Delhi**
-Aakarsh D Reja (2023EE11151) · Jayesh Narayanan (2023EE11048)
-Supervisor: Prof. Kaushik Saha
 
 Target: **STM32F407 (ARM Cortex-M4, 168 MHz)**, STM32F4 Discovery board (hardware);
 **QEMU** (`olimex-stm32-h405`) for functional verification only.
