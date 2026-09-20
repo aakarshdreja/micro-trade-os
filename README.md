@@ -1,7 +1,17 @@
 # Micro-Trade OS
 
-**A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F407),
-built on a bare-metal boot environment written from scratch.**
+**A deterministic, low-latency real-time operating system (RTOS) kernel for the
+ARM Cortex-M4 (STM32F407), built on a bare-metal boot environment written from
+scratch.**
+
+An RTOS is the small operating system that decides which task on a
+microcontroller runs next. Most are designed to be fast on average. This one is
+designed so that the *worst case* is small and can be measured, because in
+control, robotics and trading systems a single late response is the failure that
+matters.
+
+It is measured against FreeRTOS, the most widely used RTOS on microcontrollers,
+running the same workload on the same hardware model.
 
 ---
 
@@ -16,8 +26,8 @@ Every layer from the reset vector upward is in this repository.
 
 | Directory | What it is | Why it is here |
 |---|---|---|
-| [`baremetal_boot/`](baremetal_boot/) | ELL365 assignment: Cortex-M4 startup from reset to `main()`, vector table, `.data`/`.bss` runtime init, SysTick, semihosting | The **foundation**. It establishes and verifies the boot contract (correct initial SP, correct `Reset_Handler`, initialised memory, a working interrupt) that the RTOS assumes on entry. Kept because the RTOS's claims start from a verified reset, not an assumed one. |
-| [`rtos_kernel/`](rtos_kernel/) | The BTP proper: preemptive fixed-priority RTOS with poll-mode scheduling, cache-partitioned lock-free IPC, and a benchmarking testbed | The **project**. See [`rtos_kernel/docs/BTP_Objective.pdf`](rtos_kernel/docs/BTP_Objective.pdf) for objectives, method and results. |
+| [`baremetal_boot/`](baremetal_boot/) | The bare-metal startup code: Cortex-M4 boot from reset to `main()`, covering the vector table, `.data`/`.bss` runtime initialisation, the SysTick timer, and console output over semihosting | The **foundation**. It establishes and verifies the boot contract (correct initial SP, correct `Reset_Handler`, initialised memory, a working interrupt) that the RTOS assumes on entry. Kept because the RTOS's claims start from a verified reset, not an assumed one. |
+| [`rtos_kernel/`](rtos_kernel/) | The RTOS itself: a preemptive fixed-priority kernel with poll-mode scheduling, cache-partitioned lock-free message passing, and a benchmarking testbed | The **main work**. See [`rtos_kernel/docs/Project_Objectives.pdf`](rtos_kernel/docs/Project_Objectives.pdf) for the objectives, the method, and the results. |
 | [`freertos_baseline/`](freertos_baseline/) | FreeRTOS V11.1.0 running the same experiments, on the same boot layer, with the same measurement code | The **control**. The objective is stated against FreeRTOS, so FreeRTOS has to be measured rather than cited. Head-to-head figures: [`COMPARISON_FREERTOS.md`](rtos_kernel/docs/COMPARISON_FREERTOS.md). |
 
 `rtos_kernel/` carries its own `startup/` and `ld/` so it builds standalone.

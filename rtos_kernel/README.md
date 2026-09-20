@@ -8,7 +8,7 @@ Target: **STM32F407 (ARM Cortex-M4, 168 MHz)**, STM32F4 Discovery board (hardwar
 ## 1. What this is
 
 A minimal, preemptive, fixed-priority RTOS kernel built from first principles on
-top of the ELL365 bare-metal boot environment, with **worst-case latency as a
+top of the bare-metal boot environment in `baremetal_boot/`, with **worst-case latency as a
 first-class, measured design constraint**. The determinism primitives it
 implements. Bounded context-switch cost, priority-inheritance synchronisation,
 and lock-free single-producer/single-consumer handoff. Are the same techniques
@@ -16,12 +16,12 @@ used in production low-latency systems. High-frequency trading motivates the
 latency targets and the demonstration workload; no claim is made that the
 platform is a trading system.
 
-It reuses, essentially unchanged, the ELL365 layer:
+It reuses the boot layer from `baremetal_boot/`, essentially unchanged:
 - `startup/startup_stm32f4.s`, 16-entry vector table (already wires `SVC` and
   `PendSV`), `.data`/`.bss` init, `Reset_Handler`.
 - `ld/linker.ld`, 1 MB Flash @ `0x08000000`, 128 KB SRAM @ `0x20000000`.
 
-## 2. Feature checklist (mapped to the proposal)
+## 2. Feature checklist
 
 | Objective | Where |
 |---|---|
@@ -187,7 +187,7 @@ tick handler, which under interrupt lock:
 The analytic worst case is therefore `A + B·N` cycles, where `N` is the number of
 simultaneously-sleeping tasks and `A`, `B` are small constants. A bound that is
 linear in the task count and independent of the workload. This measured-typical
-vs. analysed-worst-case distinction is exactly the property the proposal targets.
+vs. analysed-worst-case distinction is exactly the property this kernel targets.
 
 ## 7. Schedulability analysis
 
@@ -201,8 +201,8 @@ demo workload:
 ## 8. Files
 
 ```
-startup/startup_stm32f4.s   ELL365 boot layer (vector table, reset)
-ld/linker.ld                ELL365 memory map + kernel symbols
+startup/startup_stm32f4.s   boot layer (vector table, reset)
+ld/linker.ld                memory map + kernel symbols
 src/context.s               SVC/PendSV context switch + switch timing
 src/rtos.{c,h}              scheduler, tasks, tick, cycle counter, MPU guard
 src/rtos_internal.h         kernel-private helpers
@@ -217,7 +217,7 @@ src/semihosting.h           QEMU semihosting output
 src/main.c                  bring-up + build-mode selection (thin)
 src/app_demo.c              Feed/Signal/Dispatch pipeline + PI test + reports
 src/bench.c                 the three benchmark experiments
-docs/BTP_Objective.pdf      project objectives, method and contribution
+docs/Project_Objectives.pdf      project objectives, method and contribution
 docs/COMPARISON_FREERTOS.md head-to-head vs FreeRTOS V11.1.0
 docs/TEST_RECORD.md         verbatim QEMU test run: commands, output, results
 docs/DEFECTS_AND_FIXES.md   defects found and fixed during development
@@ -227,7 +227,7 @@ docs/technical_report.md    full technical report
 
 ## 9. Context-switch cycle budget
 
-The proposal targets a full context switch under ~200 cycles (≈1.2 µs at
+The design target is a full context switch under ~200 cycles (≈1.2 µs at
 168 MHz). The switch cost decomposes as:
 
 | Stage | Work | Approx. cycles |
@@ -406,11 +406,7 @@ STM32F4 Discovery board, where the DWT cycle counter is real and the core runs a
 168 MHz. `make hw` sets `-DRTOS_CPU_MHZ=168` (correct 1 kHz tick and microsecond
 conversions) and `-DRTOS_ENABLE_MPU=1` (per-task stack-overflow guard).
 
-## 12. Authors and license
-
-Authored by **Aakarsh D Reja (2023EE11151)** and **Jayesh Narayanan
-(2023EE11048)** for ELD411 (B.Tech Project), Department of Electrical
-Engineering, IIT Delhi, under Prof. Kaushik Saha.
+## 12. License
 
 Released under the MIT License, see [`LICENSE`](LICENSE).
 

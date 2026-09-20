@@ -55,7 +55,7 @@ hardware runs, to expand the report toward its full length.
 ## 6. Publication and demonstration
 
 - Push the repository to a remote (`git remote add origin <url>`, `git push -u origin main`).
-- Live demonstration to the supervising faculty.
+- Live demonstration on hardware.
 
 ---
 

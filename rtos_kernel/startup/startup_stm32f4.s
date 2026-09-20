@@ -1,7 +1,7 @@
 /* ================================================================
  * startup_stm32f4.s: Bare-metal startup for STM32F4 (Cortex-M4)
  *
- * Adopted UNMODIFIED from the ELL365 bare-metal project. It:
+ * Adopted UNMODIFIED from the bare-metal boot project. It:
  *   1) Defines the 16-entry interrupt vector table at 0x08000000
  *      (already includes SVC and PendSV vectors required by the RTOS)
  *   2) Implements Reset_Handler: .data copy, .bss zero, call main()

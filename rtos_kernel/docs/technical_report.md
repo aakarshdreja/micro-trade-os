@@ -1,10 +1,9 @@
 # A Deterministic, Low-Latency Real-Time Operating System Kernel for ARM Cortex-M4
 
-**Technical Report, B.Tech Project (ELD411)**
+**Technical Report**
 Department of Electrical Engineering, Indian Institute of Technology Delhi
 
 **Authors:** Aakarsh D Reja (2023EE11151), Jayesh Narayanan (2023EE11048)
-**Supervisor:** Prof. Kaushik Saha
 **Target platform:** STM32F407 (ARM Cortex-M4, 168 MHz), STM32F4 Discovery board;
 QEMU (`olimex-stm32-h405`) for functional verification.
 
@@ -16,7 +15,7 @@ We present a minimal preemptive, fixed-priority real-time operating system (RTOS
 kernel for the ARM Cortex-M4, designed from first principles with worst-case
 latency as a measured, first-class constraint rather than as an afterthought.
 The kernel is built on top of a hand-written bare-metal boot environment (vector
-table, linker script, and SysTick timer) developed in ELL365. On that substrate
+table, linker script, and SysTick timer) in `baremetal_boot/`. On that substrate
 we implement: a constant-time (`CLZ`-based) fixed-priority scheduler with
 round-robin within priority bands; context switching through the `PendSV` and
 `SVC` exceptions; counting/binary semaphores and a mutex with priority
@@ -57,10 +56,10 @@ bypass, FPGAs on the network hot path). We make **no claim** that this platform
 is a trading system; HFT simply provides realistic latency requirements and a
 concrete pipeline to demonstrate.
 
-### 1.1 Foundation: the ELL365 boot environment
+### 1.1 Foundation: the bare-metal boot environment
 
-This work reuses, essentially unchanged, the bare-metal boot layer built in
-ELL365:
+This work reuses, essentially unchanged, the bare-metal boot layer in
+`baremetal_boot/`:
 
 - **`startup_stm32f4.s`**: A hand-written ARM Cortex-M4 startup file that defines
   the full 16-entry vector table (already including the `SVC` and `PendSV` slots
@@ -72,7 +71,7 @@ ELL365:
 - Direct, HAL-free configuration of the SysTick timer and a verified interrupt
   handler.
 
-The ELL365 project provides exactly the substrate an RTOS requires: a working
+That boot layer provides exactly the substrate an RTOS requires: a working
 vector table, a known memory map, and a reliable hardware timer.
 
 ### 1.2 Objectives
@@ -124,8 +123,8 @@ features this kernel relies on are:
 The kernel is organised into small, single-responsibility modules:
 
 ```
-startup/startup_stm32f4.s   ELL365 boot layer (vector table, reset, .data/.bss)
-ld/linker.ld                ELL365 memory map + kernel symbols
+startup/startup_stm32f4.s   boot layer (vector table, reset, .data/.bss)
+ld/linker.ld                memory map + kernel symbols
 src/context.s               SVC/PendSV context switch + switch timing
 src/rtos.{c,h}              scheduler, tasks, tick, cycle counter, MPU guard
 src/rtos_internal.h         kernel-private helpers shared across modules
@@ -746,7 +745,7 @@ the mechanisms that govern worst-case latency, context switch, scheduler,
 synchronisation, and IPC. Are explicit, measurable, and analytically bounded. The
 kernel demonstrates constant-time scheduling, priority inheritance with measured
 bounded blocking, wait-free IPC with proven memory ordering, and a schedulability
-argument for its workload, meeting the objectives set out in the proposal.
+argument for its workload, meeting the objectives set out for it.
 
 ## 15. References
 

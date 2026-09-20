@@ -129,7 +129,7 @@ static void systick_init(void)
  *
  * IMPORTANT: In production embedded code, you would NEVER call
  * semihosting from an ISR. However, in QEMU this works fine for
- * debugging purposes and is explicitly allowed for this assignment.
+ * debugging purposes, with no UART or display hardware needed.
  * ================================================================ */
 void SysTick_Handler(void)
 {

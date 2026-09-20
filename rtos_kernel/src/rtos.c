@@ -69,7 +69,7 @@ uint32_t rtos_cycles(void);
  * We also measure the duration of every interrupts-disabled window
  * so the kernel can report the longest critical section observed, 
  * the empirical basis for the analytic worst-case interrupt-latency
- * bound required by the proposal.
+ * bound this kernel reports.
  * ================================================================ */
 static inline uint32_t enter_critical(void)
 {
