@@ -1,4 +1,4 @@
-# Micro-Trade OS ELD411 Project
+# Micro-Trade OS
 
 **A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F407),
 built on a bare-metal boot environment written from scratch.**
