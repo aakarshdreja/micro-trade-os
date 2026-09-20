@@ -1,9 +1,9 @@
-# Part 1 : STM32F4 Bare-Metal Boot Sequence
+# STM32F4 Bare-Metal Boot Sequence
 
 Cortex-M4 startup from reset to `main()`, written from scratch. No vendor HAL,
 no CMSIS, no C standard library.
 
-This part is the foundation for the RTOS in Part 2. It establishes the boot
+This is the foundation for the RTOS kernel. It establishes the boot
 contract that the RTOS assumes on entry: a correct initial stack pointer, a
 correct reset vector, initialised memory, and a working interrupt.
 
@@ -141,5 +141,5 @@ src/semihosting.h           console output through the QEMU semihosting call
 
 ## Next
 
-Part 2 builds an RTOS kernel on top of this. See
+The RTOS kernel is built on top of this. See
 [`../rtos_kernel/`](../rtos_kernel/).

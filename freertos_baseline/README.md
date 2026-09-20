@@ -1,4 +1,4 @@
-# Part 3: FreeRTOS Baseline
+# FreeRTOS Baseline
 
 The control for the whole project. The objective is to be **better than
 FreeRTOS**, which is a claim that can only be settled by running FreeRTOS

@@ -1,5 +1,4 @@
-# A Deterministic: Low-Latency RTOS Kernel for ARM Cortex-M4
-
+# A Deterministic, Low-Latency RTOS Kernel for ARM Cortex-M4
 
 Target: **STM32F407 (ARM Cortex-M4, 168 MHz)**, STM32F4 Discovery board (hardware);
 **QEMU** (`olimex-stm32-h405`) for functional verification only.

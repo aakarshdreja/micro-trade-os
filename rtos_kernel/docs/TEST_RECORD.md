@@ -23,8 +23,8 @@ Absolute timings are reproduced on hardware with `make bench-* HW=1`.
 | # | Test | Command | Result |
 |---|---|---|---|
 | 0 | Build, all 5 images | `make`, `make bench-*` | **PASS**, 0 warnings, 0 errors at `-O2` |
-| 1 | Part 1, boot sequence | `cd baremetal_boot && make && make qemu` | **PASS**, both memory-init assertions |
-| 2 | Part 2, RTOS demo | `cd rtos_kernel && make && make qemu` | **PASS**, schedulable, inversion bounded, 0 poll violations |
+| 1 | Bare-metal boot sequence | `cd baremetal_boot && make && make qemu` | **PASS**, both memory-init assertions |
+| 2 | RTOS demonstration pipeline | `cd rtos_kernel && make && make qemu` | **PASS**, schedulable, inversion bounded, 0 poll violations |
 | 3 | Experiment 1, context-switch cost | `make bench-ctxsw` | **PASS**, 1,036,308 samples, 10⁶ target met |
 | 4 | Experiment 2, execution jitter | `make bench-jitter` | **PASS**, jitter 27,806 → 1; worst case 8.14× better |
 | 5 | Experiment 3, 64-byte IPC | `make bench-ipc` | **PASS**, correctness gate PASS; lock-free 1.26× |
@@ -46,7 +46,7 @@ ctx       6404	      0	   3932	  10336	   2860	/tmp/t_ctx.elf
 
 | Image | Build command | text (bytes) | bss (bytes) |
 |---|---|---|---|
-| Part 1 boot | `make` in `baremetal_boot` | 764 | 8 |
+| Bare-metal boot | `make` in `baremetal_boot` | 764 | 8 |
 | RTOS demo | `make` | 9,560 | 9,216 |
 | Exp. 2 jitter | `make bench-jitter` | 9,196 | 4,532 |
 | Exp. 3 IPC | `make bench-ipc` | 11,368 | 7,816 |
@@ -57,7 +57,7 @@ library (`-nostdlib`).
 
 ---
 
-## 1. Part 1, bare-metal boot sequence
+## 1. Bare-metal boot sequence
 
 ```bash
 cd baremetal_boot && make && make qemu
@@ -82,7 +82,7 @@ README.
 
 ---
 
-## 2. Part 2, RTOS demonstration pipeline
+## 2. RTOS demonstration pipeline
 
 ```bash
 cd rtos_kernel && make && make qemu

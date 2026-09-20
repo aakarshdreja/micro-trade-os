@@ -1,4 +1,4 @@
-# A Deterministic: Low-Latency Real-Time Operating System Kernel for ARM Cortex-M4
+# A Deterministic, Low-Latency Real-Time Operating System Kernel for ARM Cortex-M4
 
 **Technical Report, B.Tech Project (ELD411)**
 Department of Electrical Engineering, Indian Institute of Technology Delhi
