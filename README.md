@@ -3,8 +3,6 @@
 **A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F407),
 built on a bare-metal boot environment written from scratch.**
 
-Aakarsh D Reja (2023EE11151) · Jayesh Narayanan (2023EE11048)
-Department of Electrical Engineering, IIT Delhi
 
 ---
 
