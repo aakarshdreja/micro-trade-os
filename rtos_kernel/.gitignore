@@ -1,0 +1,14 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.bin
+*.map
+
+# Logs / scratch
+*.log
+qemu_out.log
+
+# Editor / OS
+.DS_Store
+*.swp

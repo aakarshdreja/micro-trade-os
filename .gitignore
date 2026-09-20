@@ -1,0 +1,10 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.bin
+*.map
+
+# Editor / OS
+.DS_Store
+*.swp
