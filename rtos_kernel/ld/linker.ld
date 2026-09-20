@@ -1,7 +1,7 @@
 /* ================================================================
  * linker.ld: Custom linker script for STM32F407 (Cortex-M4)
  *
- * Adopted from the ELL365 bare-metal project. Defines the memory
+ * Adopted from the bare-metal boot project. Defines the memory
  * map (1 MB Flash @ 0x08000000, 128 KB SRAM @ 0x20000000), places
  * the vector table first, and exports the symbols the startup code
  * and the RTOS kernel need.
