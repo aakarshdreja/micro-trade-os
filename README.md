@@ -1,17 +1,11 @@
 # Micro-Trade OS
 
-**A deterministic, low-latency real-time operating system (RTOS) kernel for the
-ARM Cortex-M4 (STM32F407), built on a bare-metal boot environment written from
-scratch.**
+**A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F407),
+built on a bare-metal boot environment written from scratch.**
 
-An RTOS is the small operating system that decides which task on a
-microcontroller runs next. Most are designed to be fast on average. This one is
-designed so that the *worst case* is small and can be measured, because in
-control, robotics and trading systems a single late response is the failure that
-matters.
-
-It is measured against FreeRTOS, the most widely used RTOS on microcontrollers,
-running the same workload on the same hardware model.
+Built so the worst case is small and measurable, not so the average is fast.
+Measured head to head against FreeRTOS on the same hardware model, the same boot
+layer and the same workload.
 
 ---
 
