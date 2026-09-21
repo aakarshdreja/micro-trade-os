@@ -6,7 +6,6 @@ built on a bare-metal boot environment written from scratch.**
 Measured head to head against FreeRTOS on the same hardware model, the same boot
 layer and the same workload.
 
-Author -  Aakarsh D Reja and Jayesh Narayannan
 
 ---
 
