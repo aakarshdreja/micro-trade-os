@@ -1,0 +1,75 @@
+Hardware image flags: -DRTOS_CPU_MHZ=100 -DRTOS_HW=1 -DBOARD_BLACKPILL_F411=1 -DRTOS_BENCH_CTXSW=1 -DRTOS_ENABLE_MPU=1
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program firmware.elf verify" -c "reset halt" \
+	    -c "arm semihosting enable" -c "resume"
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+Info : clock speed 2000 kHz
+Info : STLINK V2J37S7 (API v2) VID:PID 0483:3748
+Info : Target voltage: 3.298593
+Info : [stm32f4x.cpu] Cortex-M4 r0p1 processor detected
+Info : [stm32f4x.cpu] target has 6 breakpoints, 4 watchpoints
+Info : starting gdb server for stm32f4x.cpu on 3333
+Info : Listening on port 3333 for gdb connections
+[stm32f4x.cpu] halted due to breakpoint, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001352 psp: 0x200012d8
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001ff8 msp: 0x20020000
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+** Programming Started **
+Info : device id = 0x10006431
+Info : flash size = 512 KiB
+** Programming Finished **
+** Verify Started **
+** Verified OK **
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001408 msp: 0x20020000
+semihosting is enabled
+
+Info : Listening on port 6666 for tcl connections
+Info : Listening on port 4444 for telnet connections
+
+=====================================================
+  Deterministic low-latency RTOS kernel (Cortex-M4)
+  preemptive FP scheduler | PI mutex | poll-mode
+  cache-aligned lock-free SPSC IPC
+=====================================================
+Board: WeAct Black Pill STM32F411CEU6
+Core clock: 100 MHz (PLL from 25 MHz HSE crystal)
+DWT cycle counter: available (hardware, cycle-accurate)
+
+--- Schedulability analysis (RMA) ---
+  dispatch: C=50 T=1000 U=0.050
+  feed: C=40 T=1000 U=0.040
+  signal: C=70 T=1000 U=0.070
+  Total U=0.160  LL-bound=0.779  => PASS (U bound)
+  R(dispatch)=50 <= T? yes
+  R(feed)=90 <= T? yes
+  R(signal)=160 <= T? yes
+  => Task set is SCHEDULABLE (RTA)
+
+Mode: EXPERIMENT 1 - context-switch cost
+Starting scheduler...
+[bench] switches collected = 216084 / 1000000
+[bench] switches collected = 432165 / 1000000
+[bench] switches collected = 648247 / 1000000
+[bench] switches collected = 864329 / 1000000
+
+===== EXPERIMENT 1: context-switch cost (n>=1000000) =====
+clock source: DWT CYCCNT (cycle-accurate, hardware)
+ctx-switch: n=1080410 min=84 mean=84 p50=88 p99=88 p99.9=96 max=95 cyc
+            (us)  min=0.84 mean=0.84 p50=0.88 p99=0.88 p99.9=0.96 max=0.95
+ctx-switch histogram (cycles):
+  [80,88) 1077905
+  [88,96) 2505
+max IRQ-disabled window = 168 cyc
+shutdown command invoked
+make: *** [run-hw] Terminated: 15

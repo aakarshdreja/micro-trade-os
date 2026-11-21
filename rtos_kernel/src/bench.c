@@ -467,6 +467,39 @@ static ipc_msg_t    q_ca_buf[IPC_CAP] RTOS_CACHE_ALIGN;
 static rtos_stats_t st_base_pp, st_plain_pp, st_ca_pp;   /* ping-pong */
 static rtos_stats_t st_base_bu, st_plain_bu, st_ca_bu;   /* burst     */
 
+/* Every per-message sample is also kept, so the headline median and
+ * the speed-up ratios are EXACT rather than read off a histogram bin
+ * edge. With 256-cycle bins all three designs (387-495 cycles on the
+ * Black Pill) fell in one bin, every median printed as 512, and every
+ * ratio as 1.00x. 6 x 200 x 4 bytes = 4.8 KB of RAM. */
+enum { S_A_PP, S_B_PP, S_C_PP, S_A_BU, S_B_BU, S_C_BU, S_COUNT };
+static uint32_t ipc_samp[S_COUNT][IPC_SAMPLES];
+
+/* Exact median of n samples. Sorts in place (insertion sort: n is
+ * 200, and this runs once, after all timing is finished). */
+static uint32_t exact_median(uint32_t *v, uint32_t n)
+{
+    for (uint32_t i = 1; i < n; i++) {
+        uint32_t x = v[i];
+        uint32_t j = i;
+        while (j > 0u && v[j - 1u] > x) { v[j] = v[j - 1u]; j--; }
+        v[j] = x;
+    }
+    return (n == 0u) ? 0u : v[n / 2u];
+}
+
+/* A ratio of two medians, or "n/a" when either is 0: that means the
+ * per-message cost is below the clock's resolution (QEMU without
+ * -icount), and any ratio printed from it would be meaningless. */
+static void put_speedup(uint32_t num, uint32_t den)
+{
+    if (num == 0u || den == 0u) {
+        sh_puts("n/a (below clock resolution; use the board or -icount)");
+        return;
+    }
+    put_ratio(num, den);
+}
+
 /* ================================================================
  * The two access patterns
  * ================================================================
@@ -578,13 +611,13 @@ static int verify_queues(void)
  * the best case the silicon can do and flatters every design
  * equally, while the median is what the system actually pays. Each
  * batch carries IPC_BATCH round-trips, i.e. 2*IPC_BATCH messages. */
-static void ipc_report(const char *name, const rtos_stats_t *s)
+static void ipc_report(const char *name, const rtos_stats_t *s,
+                       uint32_t median)
 {
-    uint32_t p50  = rtos_stats_percentile(s, 500);
     uint32_t p999 = rtos_stats_percentile(s, 999);
     sh_puts("  "); sh_puts(name);
-    sh_puts(": per-message p50="); putu(p50);
-    sh_puts(" cyc   p99.9=");      putu(p999);
+    sh_puts(": per-message median="); putu(median);
+    sh_puts(" cyc   p99.9<=");     putu(p999);
     sh_puts(" cyc   min=");        putu(s->min);
     sh_puts(" max=");              putu(s->max);
     sh_puts(" cyc\r\n");
@@ -657,7 +690,22 @@ static void ipc_task(void *a)
         rtos_stats_add(&st_base_bu,  a_bu / per);
         rtos_stats_add(&st_plain_bu, b_bu / per);
         rtos_stats_add(&st_ca_bu,    c_bu / per);
+        ipc_samp[S_A_PP][s] = a_pp / per;
+        ipc_samp[S_B_PP][s] = b_pp / per;
+        ipc_samp[S_C_PP][s] = c_pp / per;
+        ipc_samp[S_A_BU][s] = a_bu / per;
+        ipc_samp[S_B_BU][s] = b_bu / per;
+        ipc_samp[S_C_BU][s] = c_bu / per;
     }
+
+    /* Exact medians, computed after timing so sorting costs nothing
+     * that is measured. */
+    uint32_t a_pp50 = exact_median(ipc_samp[S_A_PP], IPC_SAMPLES);
+    uint32_t b_pp50 = exact_median(ipc_samp[S_B_PP], IPC_SAMPLES);
+    uint32_t c_pp50 = exact_median(ipc_samp[S_C_PP], IPC_SAMPLES);
+    uint32_t a_bu50 = exact_median(ipc_samp[S_A_BU], IPC_SAMPLES);
+    uint32_t b_bu50 = exact_median(ipc_samp[S_B_BU], IPC_SAMPLES);
+    uint32_t c_bu50 = exact_median(ipc_samp[S_C_BU], IPC_SAMPLES);
 
     /* ---- Report ------------------------------------------------ */
     sh_puts("\r\n===== EXPERIMENT 3: 64-byte IPC latency =====\r\n");
@@ -681,28 +729,21 @@ static void ipc_task(void *a)
     }
 
     sh_puts("\r\n-- Pattern 1: PING-PONG (queue depth 1) --\r\n");
-    ipc_report("A mutex queue (FreeRTOS-style)", &st_base_pp);
-    ipc_report("B lock-free SPSC             ", &st_plain_pp);
-    ipc_report("C lock-free SPSC, cache-algnd", &st_ca_pp);
+    ipc_report("A mutex queue (FreeRTOS-style)", &st_base_pp,  a_pp50);
+    ipc_report("B lock-free SPSC             ", &st_plain_pp, b_pp50);
+    ipc_report("C lock-free SPSC, cache-algnd", &st_ca_pp,    c_pp50);
 
     sh_puts("\r\n-- Pattern 2: BURST (depth ");
     putu(IPC_BURST); sh_puts(") --\r\n");
-    ipc_report("A mutex queue (FreeRTOS-style)", &st_base_bu);
-    ipc_report("B lock-free SPSC             ", &st_plain_bu);
-    ipc_report("C lock-free SPSC, cache-algnd", &st_ca_bu);
+    ipc_report("A mutex queue (FreeRTOS-style)", &st_base_bu,  a_bu50);
+    ipc_report("B lock-free SPSC             ", &st_plain_bu, b_bu50);
+    ipc_report("C lock-free SPSC, cache-algnd", &st_ca_bu,    c_bu50);
 
-    uint32_t a_pp50 = rtos_stats_percentile(&st_base_pp,  500);
-    uint32_t b_pp50 = rtos_stats_percentile(&st_plain_pp, 500);
-    uint32_t c_pp50 = rtos_stats_percentile(&st_ca_pp,    500);
-    uint32_t a_bu50 = rtos_stats_percentile(&st_base_bu,  500);
-    uint32_t b_bu50 = rtos_stats_percentile(&st_plain_bu, 500);
-    uint32_t c_bu50 = rtos_stats_percentile(&st_ca_bu,    500);
-
-    sh_puts("\r\n--- Speed-up (median; >1.00x means the second is faster) ---\r\n");
-    sh_puts("  ping-pong  lock-free vs mutex : "); put_ratio(a_pp50, b_pp50 ? b_pp50 : 1u);
-    sh_puts("\r\n  ping-pong  cache-al. vs plain : "); put_ratio(b_pp50, c_pp50 ? c_pp50 : 1u);
-    sh_puts("\r\n  burst      lock-free vs mutex : "); put_ratio(a_bu50, b_bu50 ? b_bu50 : 1u);
-    sh_puts("\r\n  burst      cache-al. vs plain : "); put_ratio(b_bu50, c_bu50 ? c_bu50 : 1u);
+    sh_puts("\r\n--- Speed-up (exact median; >1.00x means the second is faster) ---\r\n");
+    sh_puts("  ping-pong  lock-free vs mutex : "); put_speedup(a_pp50, b_pp50);
+    sh_puts("\r\n  ping-pong  cache-al. vs plain : "); put_speedup(b_pp50, c_pp50);
+    sh_puts("\r\n  burst      lock-free vs mutex : "); put_speedup(a_bu50, b_bu50);
+    sh_puts("\r\n  burst      cache-al. vs plain : "); put_speedup(b_bu50, c_bu50);
     sh_puts("\r\n");
 
     /* ---- The determinism argument, which is structural ---------
@@ -732,10 +773,12 @@ static void ipc_task(void *a)
     sh_puts("  C cache-algnd : 0 - never disables interrupts\r\n");
     sh_puts("  => only A can extend another task's worst-case latency.\r\n");
 
-    sh_puts("\r\nTail behaviour (p99.9/p50; closer to 1.00 is more deterministic):\r\n");
-    sh_puts("  ping-pong A="); put_ratio(rtos_stats_percentile(&st_base_pp, 999),  a_pp50 ? a_pp50 : 1u);
-    sh_puts("  B=");           put_ratio(rtos_stats_percentile(&st_plain_pp, 999), b_pp50 ? b_pp50 : 1u);
-    sh_puts("  C=");           put_ratio(rtos_stats_percentile(&st_ca_pp, 999),    c_pp50 ? c_pp50 : 1u);
+    /* Worst / median, both exact. With 200 samples a p99.9 IS the
+     * worst sample, so the exact max is the honest tail figure. */
+    sh_puts("\r\nTail behaviour (max/median; closer to 1.00 is more deterministic):\r\n");
+    sh_puts("  ping-pong A="); put_ratio(st_base_pp.max,  a_pp50 ? a_pp50 : 1u);
+    sh_puts("  B=");           put_ratio(st_plain_pp.max, b_pp50 ? b_pp50 : 1u);
+    sh_puts("  C=");           put_ratio(st_ca_pp.max,    c_pp50 ? c_pp50 : 1u);
     sh_puts("\r\n");
     rtos_poll_report();
 
@@ -753,12 +796,18 @@ void bench_setup(void)
                 "(storage not 32-byte aligned?)\r\n");
     }
 
-    rtos_stats_init(&st_base_pp,  256u);
-    rtos_stats_init(&st_plain_pp, 256u);
-    rtos_stats_init(&st_ca_pp,    256u);
-    rtos_stats_init(&st_base_bu,  256u);
-    rtos_stats_init(&st_plain_bu, 256u);
-    rtos_stats_init(&st_ca_bu,    256u);
+    /* Bin width follows the clock. On silicon (DWT) a message costs a
+     * few hundred cycles, so 16-cycle bins (0-1024 range) resolve the
+     * designs; QEMU's emulator units need the wider 256. The headline
+     * figures no longer depend on this (exact medians above); it only
+     * sets how fine the p99.9 bound and the histogram are. */
+    const uint32_t bw = rtos_dwt_available() ? 16u : 256u;
+    rtos_stats_init(&st_base_pp,  bw);
+    rtos_stats_init(&st_plain_pp, bw);
+    rtos_stats_init(&st_ca_pp,    bw);
+    rtos_stats_init(&st_base_bu,  bw);
+    rtos_stats_init(&st_plain_bu, bw);
+    rtos_stats_init(&st_ca_bu,    bw);
 
     rtos_task_create(&tcb_ipc, "ipc", ipc_task, 0, 5u, stk_ipc, 512);
 }

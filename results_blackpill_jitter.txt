@@ -1,0 +1,96 @@
+Hardware image flags: -DRTOS_CPU_MHZ=100 -DRTOS_HW=1 -DBOARD_BLACKPILL_F411=1 -DRTOS_BENCH_JITTER=1 -DRTOS_ENABLE_MPU=1
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program firmware.elf verify" -c "reset halt" \
+	    -c "arm semihosting enable" -c "resume"
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+Info : clock speed 2000 kHz
+Info : STLINK V2J37S7 (API v2) VID:PID 0483:3748
+Info : Target voltage: 3.303416
+Info : [stm32f4x.cpu] Cortex-M4 r0p1 processor detected
+Info : [stm32f4x.cpu] target has 6 breakpoints, 4 watchpoints
+Info : starting gdb server for stm32f4x.cpu on 3333
+Info : Listening on port 3333 for gdb connections
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001408 msp: 0x20020000
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+** Programming Started **
+Info : device id = 0x10006431
+Info : flash size = 512 KiB
+** Programming Finished **
+** Verify Started **
+** Verified OK **
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001c3c msp: 0x20020000
+semihosting is enabled
+
+Info : Listening on port 6666 for tcl connections
+Info : Listening on port 4444 for telnet connections
+
+=====================================================
+  Deterministic low-latency RTOS kernel (Cortex-M4)
+  preemptive FP scheduler | PI mutex | poll-mode
+  cache-aligned lock-free SPSC IPC
+=====================================================
+Board: WeAct Black Pill STM32F411CEU6
+Core clock: 100 MHz (PLL from 25 MHz HSE crystal)
+DWT cycle counter: available (hardware, cycle-accurate)
+
+--- Schedulability analysis (RMA) ---
+  dispatch: C=50 T=1000 U=0.050
+  feed: C=40 T=1000 U=0.040
+  signal: C=70 T=1000 U=0.070
+  Total U=0.160  LL-bound=0.779  => PASS (U bound)
+  R(dispatch)=50 <= T? yes
+  R(feed)=90 <= T? yes
+  R(signal)=160 <= T? yes
+  => Task set is SCHEDULABLE (RTA)
+
+Mode: EXPERIMENT 2 - execution jitter (poll mode)
+Logic-analyser probe pins: PB12 (signal), PB13 (window)
+Starting scheduler...
+
+===== EXPERIMENT 2: execution jitter =====
+clock source: DWT CYCCNT (cycle-accurate, hardware)
+block = 32 GPIO toggles; blocks/phase = 4000
+
+Phase A - tick-driven (baseline RTOS behaviour):
+  block: n=4000 min=193 mean=393 p50=512 p99=512 p99.9=100577 max=100577 cyc
+            *** 8 of 4000 samples exceeded the histogram range (bin_width=512 x 64 bins). min/mean/max are exact; percentiles are
+                approximate - increase bin_width. ***
+            (us)  min=1.93 mean=3.93 p50=5.12 p99=5.12 p99.9=1005.77 max=1005.77
+Phase B - poll mode (RTOS_POLL_EXCLUSIVE):
+  block: n=4000 min=231 mean=231 p50=512 p99=512 p99.9=512 max=232 cyc
+            (us)  min=2.31 mean=2.31 p50=5.12 p99=5.12 p99.9=5.12 max=2.32
+
+Histograms (shape is the evidence; a single spike = no jitter):
+Phase A tick-driven histogram (cycles):
+  [0,512) 3992
+  [32768+       ) 8
+Phase B poll-mode histogram (cycles):
+  [0,512) 4000
+
+--- Result ---
+peak-to-peak jitter  A=100384 cyc   B=1 cyc   reduction=100384.00x
+p99.9 block time     A=100577 cyc   B=512 cyc
+median block time    A=512 cyc   B=512 cyc
+
+Uninterrupted block (the comparable quantity):
+  A min=193 cyc   B min=231 cyc
+  poll_enter+poll_exit overhead = 38 cyc per block (1 cyc per toggle at 32 toggles/block)
+  => poll mode does not make the loop faster; it removes
+     the interference, at a small fixed cost per section.
+
+Worst observed block: A=100577 cyc   B=232 cyc   improvement=433.52x
+  A real-time budget is written against THIS number.
+poll-mode: sections=4000 ticks_replayed=22 deferred_switch=0 overruns=0 violations=0 max_section=651 cyc
+shutdown command invoked
+make: *** [run-hw] Terminated: 15

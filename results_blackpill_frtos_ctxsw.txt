@@ -1,0 +1,58 @@
+Hardware image flags: -DRTOS_CPU_MHZ=100 -DRTOS_HW=1 -DBOARD_BLACKPILL_F411=1 -DFRTOS_BENCH_CTXSW=1
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program firmware.elf verify" -c "reset halt" \
+	    -c "arm semihosting enable" -c "resume"
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+Info : clock speed 2000 kHz
+Info : STLINK V2J37S7 (API v2) VID:PID 0483:3748
+Info : Target voltage: 3.298593
+Info : [stm32f4x.cpu] Cortex-M4 r0p1 processor detected
+Info : [stm32f4x.cpu] target has 6 breakpoints, 4 watchpoints
+Info : starting gdb server for stm32f4x.cpu on 3333
+Info : Listening on port 3333 for gdb connections
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001e54 msp: 0x20020000
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+** Programming Started **
+Info : device id = 0x10006431
+Info : flash size = 512 KiB
+** Programming Finished **
+** Verify Started **
+** Verified OK **
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x080018c8 msp: 0x20020000
+semihosting is enabled
+
+Info : Listening on port 6666 for tcl connections
+Info : Listening on port 4444 for telnet connections
+
+=====================================================
+  FreeRTOS BASELINE  (kernel V11.1.0, ARM_CM3 port)
+  1 kHz tick | preemptive + time slicing
+=====================================================
+Board: WeAct Black Pill STM32F411CEU6
+Core clock: 100 MHz (PLL from 25 MHz HSE crystal)
+Starting FreeRTOS scheduler...
+[frtos bench] switches = 180786 / 1000000
+[frtos bench] switches = 361568 / 1000000
+[frtos bench] switches = 542350 / 1000000
+[frtos bench] switches = 723132 / 1000000
+[frtos bench] switches = 903914 / 1000000
+
+===== FreeRTOS BASELINE: context-switch cost =====
+ctx-switch: n=1084696 min=73 mean=74 p50=80 p99=80 p99.9=80 max=82 cyc
+            (us)  min=0.73 mean=0.74 p50=0.80 p99=0.80 p99.9=0.80 max=0.82
+ctx-switch histogram (cycles):
+  [72,80) 1084690
+  [80,88) 6
+shutdown command invoked
+make: *** [run-hw] Terminated: 15
