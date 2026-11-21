@@ -4,8 +4,16 @@
 Department of Electrical Engineering, Indian Institute of Technology Delhi
 
 **Authors:** Aakarsh D Reja (2023EE11151), Jayesh Narayanan (2023EE11048)
-**Target platform:** STM32F407 (ARM Cortex-M4, 168 MHz), STM32F4 Discovery board;
-QEMU (`olimex-stm32-h405`) for functional verification.
+**Target platform:** STM32F4 (ARM Cortex-M4). Hardware results measured on an
+STM32F411 (WeAct Black Pill, 100 MHz); QEMU (`olimex-stm32-h405`) used for
+functional verification.
+
+> **Two kinds of results appear in this report, and each is labelled.**
+> **[QEMU]** results come from emulation: they verify correctness, and their
+> units are emulator time units, not CPU cycles. **[Hardware]** results come
+> from the Black Pill, timed in real CPU cycles. Section 12B and
+> [`HARDWARE_RESULTS.md`](HARDWARE_RESULTS.md) give the hardware figures;
+> [`results/README.md`](../../results/README.md) compares the two side by side.
 
 ---
 
@@ -276,7 +284,7 @@ temporarily **boosted** to H's priority. Now M (medium) cannot preempt L, so H
 waits only for L's critical section. On release, L's base priority is restored and
 the mutex is handed directly to the highest-priority waiter.
 
-### 6.4 Measured demonstration
+### 6.4 Measured demonstration [QEMU and Hardware]
 
 `main.c` constructs exactly the L/M/H scenario. `pi_low` (prio 2) takes the mutex
 and holds it through a busy section; `pi_high` (prio 7) requests it and records
@@ -288,6 +296,10 @@ it, and `pi_high`'s blocking equals the remaining hold time. Measured result
 ```
 pi_high blocked for 64000 cycles (~8000 us)
 ```
+
+On the Black Pill **[Hardware]** the same test measures `pi_high blocked for 98
+cycles`. QEMU's coarse clock rounds the short wait up to whole tick-sized steps,
+which is why its figure is so much larger.
 
 The blocking is bounded by `pi_low`'s critical section and is independent of
 `pi_med`. The defining property of priority inheritance.
@@ -527,7 +539,7 @@ the cumulative histogram.
 - **Interrupt-disabled window:** the tick handler measures its own critical
   section; `rtos_max_irq_disabled_cycles()` reports the longest observed.
 
-### 8.4 Representative QEMU results
+### 8.4 Representative results [QEMU]
 
 ```
 ctx-switch : n=1025944 min=0 mean=0 p50=8 p99=8 p99.9=176 max=1512 (cycles)
@@ -535,8 +547,10 @@ e2e latency: n=336 min=1550 mean=7811 p50=10752 p99=12800 p99.9=13312 (cycles)
 max IRQ-disabled window = 4670 cycles
 ```
 
-These are QEMU functional figures (SysTick-derived, not cycle-accurate); the
-same code produces cycle-accurate numbers on the Discovery board via DWT.
+These are QEMU functional figures (SysTick-derived, not cycle-accurate). On the
+Black Pill **[Hardware]** the same code measures, with the DWT counter, a context
+switch of 90–98 cycles under the demo workload and a longest interrupts-disabled
+window of 402 cycles.
 
 ---
 
@@ -662,16 +676,16 @@ warning-free at `-O2`.
 nor cycle-accurate instruction timing, so *timing* numbers under QEMU are
 functional only (SysTick-derived). The headline quantitative claims, full
 context switch under ~200 cycles, the p50/p99/p99.9/max distribution over ≥10⁶
-samples, the numeric interrupt-latency bound, and MPU fault behaviour, are to be
-measured on the STM32F4 Discovery board, where the DWT counter is real and the
-core runs at 168 MHz. The kernel currently supports static task creation only (no
+samples and the numeric interrupt-latency bound, have since been measured on
+hardware (Section 12B). The MPU guard runs on hardware; a deliberate-overflow
+demonstration is outstanding. The kernel currently supports static task creation only (no
 task deletion) and a single-core target.
 
-## 12A. Measured results from the testbed (QEMU, `-icount`)
+## 12A. Measured results from the testbed [QEMU, `-icount`]
 
 Emulation results: they establish correctness and the relative size of each
-effect. Absolute cycle figures are reproduced on the STM32F4 Discovery board
-with `make bench-* HW=1`. The full run record, with verbatim output, is in
+effect. Units are emulator time units, not cycles. The hardware figures are in
+Section 12B. The full run record, with verbatim output, is in
 [`TEST_RECORD.md`](TEST_RECORD.md).
 
 ### Experiment 1, context-switch cost
@@ -730,6 +744,28 @@ cpsid` returns 0). Only the baseline can extend another task's worst-case
 latency. This holds independently of any measurement.
 
 ---
+
+
+## 12B. Measured results on hardware [Hardware]
+
+WeAct Black Pill (STM32F411CEU6, Cortex-M4) at 100 MHz, timed with the DWT cycle
+counter. FreeRTOS V11.1.0 on the same board and clock. Units are real CPU cycles
+(100 cycles = 1 µs). Full analysis: [`HARDWARE_RESULTS.md`](HARDWARE_RESULTS.md);
+raw output: [`results/hardware_blackpill/`](../../results/hardware_blackpill/).
+
+| Measure | FreeRTOS | Ours |
+|---|---|---|
+| Exp. 1: context switch | 73–82 (task selection only) | **57–65** full switch (84–95 with MPU guard) |
+| Exp. 2: worst block in a critical loop | 100,431 | **232** (poll mode), 433× lower |
+| Exp. 2: jitter (max − min) | 100,242 | **1** (poll mode) |
+| Exp. 2: fastest block | **189** | 193 (tick-driven), 231 (poll mode) |
+| Exp. 3: 64-byte message, ping-pong | 667 | **387** lock-free (1.72×); 493 mutex queue |
+| Longest interrupts-disabled window | n/a | 168 (benchmark), 402 (demo) |
+| Priority-inheritance wait | n/a | 98 |
+
+The direction of every effect matches the QEMU results in Section 12A; the
+magnitudes differ because QEMU's units are not cycles. The comparison is
+explained in [`results/README.md`](../../results/README.md).
 
 ## 13. Future work
 

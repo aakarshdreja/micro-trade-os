@@ -135,7 +135,7 @@ priority is restored and the mutex is handed directly to the highest-priority
 waiter. This bounds the blocking a high-priority task can suffer to the length of
 the holder's critical section, independent of unrelated medium-priority tasks.
 
-## 5. Measured results (QEMU functional run)
+## 5. Measured results: QEMU functional run
 
 > **Hardware results** from the STM32F411 Black Pill, compared head to head
 > with FreeRTOS, are in [`docs/HARDWARE_RESULTS.md`](docs/HARDWARE_RESULTS.md).
@@ -143,8 +143,8 @@ the holder's critical section, independent of unrelated medium-priority tasks.
 
 QEMU's Cortex-M model does not implement the DWT cycle counter, so on QEMU the
 kernel automatically falls back to a **SysTick-derived** monotonic cycle counter
-(functional, not cycle-accurate). On the STM32F4 Discovery board the DWT counter
-is used and the numbers are cycle-accurate. Representative QEMU output:
+(functional, not cycle-accurate). On hardware the DWT counter is used and the
+numbers are cycle-accurate. Representative QEMU output (emulator units):
 
 ```
 --- Schedulability analysis (RMA) ---
@@ -222,7 +222,7 @@ src/main.c                  bring-up + build-mode selection (thin)
 src/app_demo.c              Feed/Signal/Dispatch pipeline + PI test + reports
 src/bench.c                 the three benchmark experiments
 docs/Project_Objectives.pdf      project objectives, method and contribution
-docs/COMPARISON_FREERTOS.md head-to-head vs FreeRTOS V11.1.0
+docs/COMPARISON_FREERTOS.md head-to-head vs FreeRTOS V11.1.0 under QEMU
 docs/TEST_RECORD.md         verbatim QEMU test run: commands, output, results
 docs/DEFECTS_AND_FIXES.md   defects found and fixed during development
 docs/HARDWARE_RESULTS.md    hardware results vs FreeRTOS (Black Pill)
@@ -315,10 +315,31 @@ Correctness gates the timing: every queue is verified for round-trip byte
 integrity, FIFO ordering and full/empty edge behaviour before any figure is
 printed.
 
-### Results from the testbed
+### Results: hardware (WeAct Black Pill, real CPU cycles)
 
-Emulation results; absolute cycle figures are reproduced on hardware with
-`make bench-* HW=1`. Full run record in [`docs/TEST_RECORD.md`](docs/TEST_RECORD.md).
+> **Source: real hardware.** STM32F411CEU6 at 100 MHz, timed with the DWT cycle
+> counter. FreeRTOS V11.1.0 on the same board and clock. **These are the figures
+> to cite.** Full analysis: [`docs/HARDWARE_RESULTS.md`](docs/HARDWARE_RESULTS.md);
+> raw output: [`results/hardware_blackpill/`](../results/hardware_blackpill/).
+
+| Measure | FreeRTOS | Ours |
+|---|---|---|
+| Exp. 1: context switch (cycles) | 73–82 (task selection only) | **57–65** full switch; 84–95 with MPU guard |
+| Exp. 2: worst block in a critical loop | 100,431 | **232** in poll mode (433× lower) |
+| Exp. 2: jitter (max − min) | 100,242 | **1** in poll mode |
+| Exp. 2: fastest block | **189** | 193 tick-driven, 231 poll mode |
+| Exp. 3: 64-byte message, ping-pong | 667 | **387** lock-free (1.72×); 493 mutex queue |
+| Exp. 3: cache-partitioned vs plain lock-free | — | 0.98× (parity, as predicted) |
+
+### Results: QEMU (emulation units)
+
+
+> **Source: QEMU emulation.** Units are emulator time units, not CPU cycles.
+> They verify correctness and the direction of each effect; the real timings are
+> the hardware results above. Full run record in
+> [`docs/TEST_RECORD.md`](docs/TEST_RECORD.md).
+
+#### QEMU: within this kernel
 
 **Experiment 2. Jitter.** 4000 blocks per phase, identical task set, only the
 poll section differing:
@@ -346,7 +367,7 @@ the Cortex-M4 has no data cache and single-cycle SRAM, so the load the shadow
 indices remove costs about as much as the branch and store replacing it. It is a
 portability and multi-core property, not claimed as an M4 speed-up.
 
-### Against FreeRTOS
+#### QEMU: against FreeRTOS
 
 FreeRTOS V11.1.0 was built and measured on the same boot layer, clock,
 instrumentation and workload, see [`freertos_baseline/`](../freertos_baseline/)
@@ -366,7 +387,7 @@ and [`docs/COMPARISON_FREERTOS.md`](docs/COMPARISON_FREERTOS.md).
 Worst-case jitter **7.7×** better; hot-path IPC **1.28×** faster. FreeRTOS is
 ~6% faster on the uninterrupted path. This kernel is not the faster kernel at
 raw execution, and is not claimed to be. The context-switch comparison is
-inconclusive under emulation and needs hardware.
+inconclusive under emulation; see the hardware results above.
 
 ### The determinism argument is structural, not statistical
 
@@ -401,13 +422,19 @@ is real.
 
 ## 11. QEMU vs. hardware
 
-QEMU verifies **functional correctness**: scheduling, preemption, priority
-inheritance, SPSC ordering, and the pipeline. Cycle-accurate **timing** (context
-switch < ~200 cycles target, tail-latency distribution over ≥10⁶ samples, the
-interrupt-latency bound, and MPU stack-overflow faulting) is characterised on the
-STM32F4 Discovery board, where the DWT cycle counter is real and the core runs at
-168 MHz. `make hw` sets `-DRTOS_CPU_MHZ=168` (correct 1 kHz tick and microsecond
-conversions) and `-DRTOS_ENABLE_MPU=1` (per-task stack-overflow guard).
+| | QEMU (emulation) | Hardware (WeAct Black Pill) |
+|---|---|---|
+| Chip | emulated Cortex-M4 (`olimex-stm32-h405`) | real STM32F411CEU6, Cortex-M4 at 100 MHz |
+| Timing source | SysTick-based count | DWT cycle counter |
+| Units | emulator time units | real CPU cycles |
+| Used for | functional correctness: scheduling, preemption, priority inheritance, queue ordering, the pipeline | timing: context-switch cost, worst-case jitter, IPC cost, interrupts-disabled bound, MPU guard |
+| Results | [`results/qemu/`](../results/qemu/), [`docs/TEST_RECORD.md`](docs/TEST_RECORD.md) | [`results/hardware_blackpill/`](../results/hardware_blackpill/), [`docs/HARDWARE_RESULTS.md`](docs/HARDWARE_RESULTS.md) |
+
+Both agree on the direction of every effect; only the hardware gives real
+magnitudes. The two are compared side by side, with the reasons they differ, in
+[`results/README.md`](../results/README.md). Hardware builds use `HW=1` with
+`BOARD=blackpill` (100 MHz) or `BOARD=disc` (STM32F4 Discovery, 168 MHz); both
+enable the MPU stack guard.
 
 ## 12. License
 

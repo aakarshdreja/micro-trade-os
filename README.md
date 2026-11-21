@@ -6,6 +6,8 @@ built on a bare-metal boot environment written from scratch.**
 Measured head to head against FreeRTOS on real hardware (STM32F411 at 100 MHz),
 with the same boot layer, measurement code and workload.
 
+**Hardware results** (real CPU cycles, measured on the board):
+
 | On the same chip | FreeRTOS V11.1.0 | Micro-Trade OS |
 |---|---|---|
 | Worst-case block in a critical loop | 100,431 cycles | **232 cycles (433x lower)** |
@@ -14,7 +16,9 @@ with the same boot layer, measurement code and workload.
 
 Full results, comparison and features:
 [`rtos_kernel/docs/HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md).
-
+The project was also verified under QEMU (emulation), whose figures are in
+different units; the two are kept apart and compared side by side in
+[`results/README.md`](results/README.md).
 
 ---
 
@@ -31,7 +35,7 @@ Every layer from the reset vector upward is in this repository.
 |---|---|---|
 | [`baremetal_boot/`](baremetal_boot/) | The bare-metal startup code: Cortex-M4 boot from reset to `main()`, covering the vector table, `.data`/`.bss` runtime initialisation, the SysTick timer, and console output over semihosting | The **foundation**. It establishes and verifies the boot contract (correct initial SP, correct `Reset_Handler`, initialised memory, a working interrupt) that the RTOS assumes on entry. Kept because the RTOS's claims start from a verified reset, not an assumed one. |
 | [`rtos_kernel/`](rtos_kernel/) | The RTOS itself: a preemptive fixed-priority kernel with poll-mode scheduling, cache-partitioned lock-free message passing, and a benchmarking testbed | The **main work**. See [`rtos_kernel/docs/Project_Objectives.pdf`](rtos_kernel/docs/Project_Objectives.pdf) for the objectives, the method, and the results. |
-| [`freertos_baseline/`](freertos_baseline/) | FreeRTOS V11.1.0 running the same experiments, on the same boot layer, with the same measurement code | The **control**. The objective is stated against FreeRTOS, so FreeRTOS has to be measured rather than cited. Head-to-head figures: [`COMPARISON_FREERTOS.md`](rtos_kernel/docs/COMPARISON_FREERTOS.md). |
+| [`freertos_baseline/`](freertos_baseline/) | FreeRTOS V11.1.0 running the same experiments, on the same boot layer, with the same measurement code | The **control**. The objective is stated against FreeRTOS, so FreeRTOS has to be measured rather than cited. Head-to-head figures: on hardware, [`HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md); under QEMU, [`COMPARISON_FREERTOS.md`](rtos_kernel/docs/COMPARISON_FREERTOS.md). |
 
 `rtos_kernel/` carries its own `startup/` and `ld/` so it builds standalone.
 They are the `baremetal_boot/` files, extended with the `SVC` and `PendSV`
@@ -79,10 +83,10 @@ rather than cited.
 
 | Document | Contents |
 |---|---|
-| [`docs/HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md) | **Hardware results** on the STM32F411 Black Pill, compared with FreeRTOS: why this kernel is better, and its features |
-| [`results/`](results/) | Raw board output of every hardware run, one file per experiment, with an index |
+| [`docs/HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md) | **Hardware:** results on the STM32F411 Black Pill, compared with FreeRTOS: why this kernel is better, and its features |
+| [`results/`](results/) | **Start here for results.** QEMU and hardware results kept apart (`qemu/`, `hardware_blackpill/`), with a side-by-side comparison |
 | [`docs/HARDWARE_TESTING_BLACKPILL.md`](rtos_kernel/docs/HARDWARE_TESTING_BLACKPILL.md) | Step-by-step procedure to reproduce the hardware results |
-| [`docs/TEST_RECORD.md`](rtos_kernel/docs/TEST_RECORD.md) | Results of an actual QEMU run of every build and every experiment: commands and verbatim output |
+| [`docs/TEST_RECORD.md`](rtos_kernel/docs/TEST_RECORD.md) | **QEMU:** results of an actual QEMU run of every build and every experiment: commands and verbatim output |
 | [`docs/DEFECTS_AND_FIXES.md`](rtos_kernel/docs/DEFECTS_AND_FIXES.md) | Defects found and fixed during development, with root cause and confirmation |
 | [`docs/OUTSTANDING_WORK.md`](rtos_kernel/docs/OUTSTANDING_WORK.md) | What remains, what was removed from scope, and future work |
 

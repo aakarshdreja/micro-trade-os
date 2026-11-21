@@ -1,5 +1,10 @@
 # Hardware Results: Micro-Trade OS vs FreeRTOS
 
+> **Source: real hardware.** WeAct Black Pill, STM32F411CEU6 at 100 MHz.
+> **Units are real CPU cycles** from the DWT cycle counter (100 cycles = 1 µs).
+> The earlier QEMU (emulation) results are kept separately; the two are
+> compared side by side in [`results/README.md`](../../results/README.md).
+
 Measured on real silicon, head to head, on the same board, at the same clock,
 with the same compiler, flags, boot code, measurement code and workload. The
 kernel is the only variable.
@@ -32,7 +37,7 @@ At 100 MHz, **1 cycle = 10 ns** and **100 cycles = 1 µs**. Cycle counts belong 
 the Cortex-M4 core, so they carry over directly to other STM32F4 parts such as
 the STM32F407 Discovery; only the microsecond figures depend on the clock.
 
-Raw output of every run is in the [`results/`](../../results/) folder at the top of the repository, which lists each file and what it contains.
+Raw output of every run is in [`results/hardware_blackpill/`](../../results/hardware_blackpill/), which lists each file and what it contains.
 
 ---
 

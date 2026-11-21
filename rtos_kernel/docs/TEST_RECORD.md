@@ -1,5 +1,11 @@
 # Test Record: QEMU Verification Run
 
+> **Source: QEMU emulation, not hardware.** Units are emulator time units,
+> not CPU cycles. Use these figures for correctness and the direction of each
+> effect. The real timings, measured on the Black Pill, are in
+> [`HARDWARE_RESULTS.md`](HARDWARE_RESULTS.md); both are compared side by side
+> in [`results/README.md`](../../results/README.md).
+
 Results of an actual run of every build and every experiment. Commands as shown,
 output verbatim.
 

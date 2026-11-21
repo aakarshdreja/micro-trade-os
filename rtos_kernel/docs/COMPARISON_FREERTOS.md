@@ -1,4 +1,10 @@
-# Head to Head: This Kernel vs FreeRTOS
+# Head to Head: This Kernel vs FreeRTOS (QEMU emulation)
+
+> **Source: QEMU emulation, not hardware.** Units are emulator time units,
+> not CPU cycles. Use these figures for correctness and the direction of each
+> effect. The real timings, measured on the Black Pill, are in
+> [`HARDWARE_RESULTS.md`](HARDWARE_RESULTS.md); both are compared side by side
+> in [`results/README.md`](../../results/README.md).
 
 The project objective is stated against FreeRTOS. So FreeRTOS was built and
 measured, not just cited. This document is the comparison.
