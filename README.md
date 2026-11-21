@@ -1,10 +1,19 @@
 # Micro-Trade OS
 
-**A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F407),
+**A deterministic, low-latency RTOS kernel for the ARM Cortex-M4 (STM32F4),
 built on a bare-metal boot environment written from scratch.**
 
-Measured head to head against FreeRTOS on the same hardware model, the same boot
-layer and the same workload.
+Measured head to head against FreeRTOS on real hardware (STM32F411 at 100 MHz),
+with the same boot layer, measurement code and workload.
+
+| On the same chip | FreeRTOS V11.1.0 | Micro-Trade OS |
+|---|---|---|
+| Worst-case block in a critical loop | 100,431 cycles | **232 cycles (433x lower)** |
+| Jitter of that loop | 100,242 cycles | **1 cycle** |
+| 64-byte message | 667 cycles | **387 cycles (1.72x faster)**, no interrupt masking |
+
+Full results, comparison and features:
+[`rtos_kernel/docs/HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md).
 
 
 ---
@@ -70,16 +79,20 @@ rather than cited.
 
 | Document | Contents |
 |---|---|
+| [`docs/HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md) | **Hardware results** on the STM32F411 Black Pill, compared with FreeRTOS: why this kernel is better, and its features |
+| [`docs/HARDWARE_TESTING_BLACKPILL.md`](rtos_kernel/docs/HARDWARE_TESTING_BLACKPILL.md) | Step-by-step procedure to reproduce the hardware results |
 | [`docs/TEST_RECORD.md`](rtos_kernel/docs/TEST_RECORD.md) | Results of an actual QEMU run of every build and every experiment: commands and verbatim output |
 | [`docs/DEFECTS_AND_FIXES.md`](rtos_kernel/docs/DEFECTS_AND_FIXES.md) | Defects found and fixed during development, with root cause and confirmation |
-| [`docs/OUTSTANDING_WORK.md`](rtos_kernel/docs/OUTSTANDING_WORK.md) | What remains: hardware runs, captures, and work left out of scope |
+| [`docs/OUTSTANDING_WORK.md`](rtos_kernel/docs/OUTSTANDING_WORK.md) | What remains, what was removed from scope, and future work |
 
 ## A note on the numbers
 
 QEMU verifies **function and correctness**. It implements no DWT cycle counter
 and is not cycle-accurate, so it cannot produce the timing figures the report
 needs. Every report states which clock produced it, and the figures for the
-final report come from the STM32F4 Discovery board (`make bench-* HW=1`).
+final report come from the board: an STM32F411 Black Pill at 100 MHz
+(`make bench-* HW=1 BOARD=blackpill`), reported in
+[`HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md).
 
 ## License
 

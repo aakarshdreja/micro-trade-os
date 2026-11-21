@@ -41,7 +41,7 @@ It reuses the boot layer from `baremetal_boot/`, essentially unchanged:
 | **Cache-line-partitioned lock-free SPSC** with shadow indices | `spsc.c` `spsc_ca_t` |
 | Like-for-like **mutex queue baseline** (FreeRTOS-shaped control) | `queue_baseline.c` |
 | Benchmarking testbed: jitter, IPC latency, context-switch cost | `bench.c` |
-| GPIO driver for external (logic-analyser) jitter verification | `gpio.c` |
+| GPIO toggle workload for the jitter benchmark (single-store `BSRR` writes) | `gpio.c` |
 
 ## 3. Build and run
 
@@ -137,6 +137,10 @@ the holder's critical section, independent of unrelated medium-priority tasks.
 
 ## 5. Measured results (QEMU functional run)
 
+> **Hardware results** from the STM32F411 Black Pill, compared head to head
+> with FreeRTOS, are in [`docs/HARDWARE_RESULTS.md`](docs/HARDWARE_RESULTS.md).
+> The figures below are from QEMU and verify function only.
+
 QEMU's Cortex-M model does not implement the DWT cycle counter, so on QEMU the
 kernel automatically falls back to a **SysTick-derived** monotonic cycle counter
 (functional, not cycle-accurate). On the STM32F4 Discovery board the DWT counter
@@ -211,7 +215,7 @@ src/sync.c                  semaphores + priority-inheritance mutex
 src/spsc.c                  lock-free SPSC ring (plain + cache-partitioned)
 src/queue_baseline.c        mutex+semaphore queue - the experimental control
 src/stats.c                 histogram/percentiles + schedulability analysis
-src/gpio.c, src/gpio.h      STM32F407 GPIO (PD12/PD13) for the jitter probe
+src/gpio.c, src/gpio.h      GPIO toggle workload for the jitter benchmark
 src/libc_stubs.c            freestanding memset/memcpy
 src/semihosting.h           QEMU semihosting output
 src/main.c                  bring-up + build-mode selection (thin)
@@ -221,7 +225,8 @@ docs/Project_Objectives.pdf      project objectives, method and contribution
 docs/COMPARISON_FREERTOS.md head-to-head vs FreeRTOS V11.1.0
 docs/TEST_RECORD.md         verbatim QEMU test run: commands, output, results
 docs/DEFECTS_AND_FIXES.md   defects found and fixed during development
-docs/OUTSTANDING_WORK.md    what remains (hardware runs, captures)
+docs/HARDWARE_RESULTS.md    hardware results vs FreeRTOS (Black Pill)
+docs/OUTSTANDING_WORK.md    what remains, and what is out of scope
 docs/technical_report.md    full technical report
 ```
 
@@ -259,7 +264,7 @@ switches are recorded. The tail cannot be stated from a short run.
 
 ### Experiment 2. Execution jitter (`make bench-jitter`)
 
-Tests the poll-mode claim. A task toggles PD12 and times blocks of 32 toggles.
+Tests the poll-mode claim. A task toggles a GPIO pin and times blocks of 32 toggles.
 Every block runs the identical instruction sequence, so in a perfect world the
 distribution is a single spike; anything wider is jitter.
 
@@ -268,10 +273,8 @@ distribution is a single spike; anything wider is jitter.
 * **Phase B**: The identical loop and the identical task set, wrapped in
   `RTOS_POLL_EXCLUSIVE` poll sections.
 
-Only one variable differs. PD13 is held high across the measured window, so a
-logic analyser triggered on PD13 captures exactly the blocks that produced the
-printed numbers. The histogram and the waveform are two independent views of
-the same claim.
+Only one variable differs: the poll section. The evidence is the on-chip
+distribution of block times, measured with the DWT cycle counter.
 
 > **Falsifiable prediction:** poll mode removes *interference*; it does not make
 > the loop faster. The comparable quantity across the two phases is the

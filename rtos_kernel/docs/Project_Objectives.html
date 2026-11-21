@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Micro-Trade OS: Objectives, Method and Contribution</title>
+<!-- Source for Project_Objectives.pdf. Regenerate with:
+     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless \
+       --no-pdf-header-footer --print-to-pdf=Project_Objectives.pdf Project_Objectives.html -->
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root { --navy: #1f3a5f; --ink: #1d1d1f; --muted: #555; --line: #c9d2de; --tint: #eef2f7; --amber: #fdf3dc; --amber-line: #e0c27a; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; color: var(--ink); font-size: 10.2pt; line-height: 1.45; margin: 0; }
+  h1 { color: var(--navy); font-size: 22pt; margin: 0 0 2pt; }
+  .sub { color: var(--muted); margin: 0 0 2pt; }
+  .meta { color: var(--muted); font-size: 9pt; margin-bottom: 14pt; }
+  h2 { color: var(--navy); font-size: 14pt; margin: 16pt 0 6pt; }
+  h3 { font-size: 11pt; margin: 12pt 0 4pt; }
+  p { margin: 0 0 7pt; text-align: justify; }
+  ul { margin: 0 0 8pt 0; padding-left: 16pt; }
+  li { margin-bottom: 4pt; text-align: justify; }
+  code { font-family: Menlo, Consolas, monospace; font-size: 8.8pt; }
+  table { width: 100%; border-collapse: collapse; margin: 4pt 0 8pt; font-size: 9.2pt; page-break-inside: avoid; }
+  th { background: var(--navy); color: #fff; text-align: left; padding: 5pt 6pt; font-weight: 600; }
+  td { border: 0.5pt solid var(--line); padding: 4pt 6pt; vertical-align: top; }
+  .box { background: var(--tint); border: 0.5pt solid var(--line); padding: 8pt 10pt; margin: 8pt 0 10pt; page-break-inside: avoid; }
+  .box.warn { background: var(--amber); border-color: var(--amber-line); }
+  .box .title { color: var(--navy); font-weight: 700; margin-bottom: 4pt; }
+  .box.warn .title { color: #6b4a00; }
+  .note { font-size: 8.6pt; color: var(--muted); }
+  b { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<h1>Micro-Trade OS</h1>
+<p class="sub">A Deterministic, Low-Latency RTOS Kernel for the ARM Cortex-M4</p>
+<p class="sub">Statement of Objectives, Method and Contribution</p>
+<p class="meta">Target platform: STM32F4 (Cortex-M4); hardware results on STM32F411 (WeAct Black Pill, 100 MHz) &nbsp;|&nbsp; Baseline for comparison: FreeRTOS V11.1.0</p>
+
+<h2>1. The problem</h2>
+<p>A conventional real-time operating system is built to be <i>fair</i> and <i>responsive on average</i>. It keeps a periodic timer interrupt running at all times, typically 1 kHz, because that interrupt is what makes preemption possible. The same interrupt is also what makes latency unpredictable: it can land on any instruction of a time-critical task, and the victim pays for the vector fetch, the stack frame, the handler body, a scheduler pass and the return. Averaged over a long run that cost is negligible. As a worst case on a single iteration it can consume the entire timing budget.</p>
+<p>For a whole class of systems the average is the wrong thing to optimise. What matters is the promise that <i>no</i> iteration will ever exceed a stated bound. This project builds an RTOS kernel in which that bound is a designed, measured and defended property rather than an emergent one.</p>
+
+<div class="box">
+  <div class="title">The thesis in one sentence</div>
+  Applying three architectural techniques from electronic trading infrastructure, poll-mode scheduling, lock-free cache-partitioned message passing, and tail-latency-first measurement, to a $10 ARM Cortex-M microcontroller yields determinism that a conventional RTOS configuration on the same silicon does not provide.
+</div>
+
+<h2>2. Objectives</h2>
+<p>The project has one primary objective and four supporting ones.</p>
+<h3>Primary</h3>
+<p>Design, implement and <b>quantitatively validate</b> a preemptive fixed-priority RTOS kernel for the Cortex-M4 whose worst-case scheduling jitter and inter-task message latency are measurably lower, and measurably more predictable, than those of a conventional tick-driven, lock-based RTOS running the same workload on the same hardware.</p>
+<h3>Supporting</h3>
+<ul>
+  <li><b>O1, Poll-mode scheduling.</b> Provide a task class that can suspend the scheduler tick for a bounded region, so a critical task runs to completion with zero scheduling jitter, and do so <i>without losing real time</i>: the suppressed ticks must be reconstructed and replayed when the region closes.</li>
+  <li><b>O2, Cache-aligned lock-free IPC.</b> Replace mutex-protected message queues on the hot path with a single-producer/single-consumer ring buffer that is partitioned across cache lines and uses shadow indices, eliminating both lock overhead and false sharing.</li>
+  <li><b>O3, A benchmarking testbed.</b> Build the conventional design as a like-for-like control on the same kernel, and measure both under one harness. A claim of improvement is only as good as the baseline it is measured against.</li>
+  <li><b>O4, Bounded, provable timing.</b> Retain and verify priority inheritance, response-time schedulability analysis, and an empirical worst-case interrupts-disabled bound, so the measured numbers can be read against a bound claimed in advance.</li>
+</ul>
+
+<h2>3. The two new mechanisms</h2>
+<h3>3.1 Poll-mode scheduling</h3>
+<p>Exchange-colocated trading systems avoid interruption altogether: the hot thread is pinned, the kernel is kept out of its way, and it polls. Poll-mode scheduling reduces that idea to what a Cortex-M4 can do. A task declared <code>TASK_CLASS_POLL</code> may open a <i>poll section</i>, and for its duration the kernel guarantees the task is not descheduled.</p>
+<p>Three things happen on entry:</p>
+<ul>
+  <li>SysTick's <code>TICKINT</code> bit is cleared, so the tick cannot fire. <code>ENABLE</code> is deliberately left set, so the counter keeps running and no real time is lost. This is what makes the section reversible.</li>
+  <li><code>rtos_schedule()</code> stops pending PendSV and records a <i>deferred</i> switch instead, so nothing can deschedule the task even if an interrupt readies a higher-priority one. This is what makes the guarantee a property of the kernel rather than a side effect of the tick being masked.</li>
+  <li>In <code>RTOS_POLL_EXCLUSIVE</code> mode, BASEPRI is additionally raised so no configurable-priority interrupt runs at all. Faults and NMI stay enabled by design: masking those would trade a jitter problem for a silent-corruption problem.</li>
+</ul>
+<p>On exit the kernel replays the suppressed ticks, restores <code>TICKINT</code> and BASEPRI, and takes the deferred switch. The rest of the task set therefore sees a scheduler that <i>paused</i>, not one that lost time. Delays and deadlines remain correct.</p>
+
+<div class="box">
+  <div class="title">Counting what the hardware will not count</div>
+  SysTick's <code>COUNTFLAG</code> saturates, so the hardware cannot report how many reloads occurred while the interrupt was masked. The kernel counts them in software: SysTick counts <i>down</i>, so a fresh sample of <code>VAL</code> that is <i>larger</i> than the previous one means the counter wrapped and one tick was suppressed. The sampling hook is <code>rtos_poll_expired()</code>, which the poll loop already calls once per iteration to honour its cycle budget. Where the DWT cycle counter exists (real silicon) the elapsed-cycle count gives an independent second estimate, and the kernel takes the larger of the two: it may run the clock forward, never backward. A late wake-up is a scheduling artefact; a lost tick is a correctness bug.
+</div>
+
+<h3>The honest cost</h3>
+<p>A poll section is <b>cooperative</b>: the kernel cannot end one, only the task can. Determinism inside the section is bought with the programmer's obligation to leave it. The kernel makes that obligation auditable rather than implicit. It records every section's length, every budget overrun and every blocking-call violation, and reports them. A task that blocks inside a section does not hang the system: the kernel force-closes the section, restores the tick and counts the violation.</p>
+
+<h3>3.2 Cache-aligned lock-free IPC</h3>
+<p>The hot-path queue is a wait-free single-producer/single-consumer ring with two structural properties:</p>
+<ul>
+  <li><b>Cache-line partitioning.</b> Immutable geometry, producer-owned state (<code>tail</code>, <code>cached_head</code>) and consumer-owned state (<code>head</code>, <code>cached_tail</code>) occupy three separate 32-byte regions. Neither side ever dirties a line the other reads on its hot path, so false sharing is eliminated by construction.</li>
+  <li><b>Shadow indices.</b> The producer tests for “full” against its own stale copy of the consumer's index and re-reads the real index only when that copy says full. The consumer mirrors this. On a queue that is kept drained, the peer's index leaves the common path entirely.</li>
+</ul>
+<div class="box warn">
+  <div class="title">A claim this project deliberately does not make</div>
+  The STM32F4 parts used here are Cortex-M4s and <b>have no data cache</b>. On these parts the padding cannot buy a cache effect, and it is not claimed to. What the alignment buys here is that each index sits alone on a naturally-aligned block, and that the same source stays correct when compiled for a cached Cortex-M7 or any multi-core host, where false sharing is real. Separating the effect of the lock from the effect of the memory layout, rather than attributing both to “cache alignment”, is part of the contribution.
+</div>
+
+<h2>4. Method: how the claim is proved</h2>
+<p>A claim of improvement is only as strong as its control, so the conventional design is <b>built here</b>, on the same kernel, rather than quoted from another project. The baseline queue (<code>queue_baseline.c</code>) is a mutex-plus-semaphore copying queue of the same shape as FreeRTOS's <code>xQueueSend</code>/<code>xQueueReceive</code>, compiled with the same flags at the same clock, and it is given its most favourable honest form: its fast path skips the semaphores entirely. The only variable that differs between subjects is the synchronisation strategy. FreeRTOS V11.1.0 itself is also built and measured on the same board.</p>
+
+<h3>Three experiments</h3>
+<table>
+  <tr><th>#</th><th>Experiment</th><th>What it isolates</th><th>Instrument</th></tr>
+  <tr><td>1</td><td>Context-switch cost, ≥ 10<sup>6</sup> samples</td><td>The kernel's own overhead per switch, as a full distribution</td><td>DWT CYCCNT, timed inside PendSV</td></tr>
+  <tr><td>2</td><td>Execution jitter: tick-driven vs poll-mode</td><td>Whether suppressing the scheduler tick removes jitter. Identical task set in both phases; the <i>only</i> difference is the poll section</td><td>DWT CYCCNT, every block timed on chip</td></tr>
+  <tr><td>3</td><td>64-byte IPC latency, three queue designs</td><td>A vs B isolates the cost of the lock; B vs C isolates the cost of the peer-index load</td><td>DWT, batched and interleaved</td></tr>
+</table>
+<p class="note">A 64-byte message is chosen deliberately: it is the size of a market-data tick record and, not coincidentally, exactly two 32-byte cache lines, which makes the alignment question live rather than academic.</p>
+
+<h3>Methodological commitments</h3>
+<ul>
+  <li><b>Distributions, not averages.</b> Determinism is a claim about the <i>tail</i>. A mean hides precisely the events the experiments are about, so every result is reported as min / mean / p50 / p99 / p99.9 / max with the histogram that produced it.</li>
+  <li><b>A falsifiable prediction.</b> Poll mode removes interference; it does not make the loop faster. The quantity comparable across the two phases is the <i>minimum</i>, an uninterrupted block, and the two minima must agree up to the cost of the poll machinery itself, which is reported rather than absorbed. What must collapse is the <i>spread</i>: a single narrow spike against a multi-modal baseline.</li>
+  <li><b>Correctness gates the timing.</b> A latency figure from a queue that drops or reorders messages is worthless, so every queue is verified for round-trip byte integrity, FIFO ordering and full/empty edge behaviour before any timing is reported.</li>
+  <li><b>Emulator results are labelled as such.</b> QEMU implements no DWT and is not cycle-accurate; every report states which clock produced it. QEMU verifies function and correctness. The numbers in the report come from the board.</li>
+</ul>
+
+<h2>5. Why this matters beyond trading</h2>
+<p>High-frequency trading motivates the latency targets and the shape of the workload; no claim is made that the platform is a trading system. The underlying capability, <i>ultra-deterministic OS bypass for resource-constrained embedded systems</i>, is what transfers:</p>
+<table>
+  <tr><th style="width:28%">Domain</th><th>Why jitter is the binding constraint</th></tr>
+  <tr><td>High-speed robotics and drone swarms</td><td>Synchronised flight controllers share telemetry on a fixed cadence. If the RTOS pauses a rotor-synchronisation task to service background work, the airframe drifts within that window. The bound that matters is the worst case, not the average.</td></tr>
+  <tr><td>Automotive drive-by-wire (EV and ADAS)</td><td>When a radar return indicates a pedestrian, the braking task must execute within a fixed deadline. Safety cases are written against worst-case response, so a scheduler whose interference is bounded and measured is worth more than one that is merely fast on average.</td></tr>
+  <tr><td>Industry 5.0 and edge AI</td><td>Vibration and acoustic models on-device ingest high-rate SPI/I²C streams. Interrupt-driven collection spends CPU on per-sample overhead; poll-mode ingest with lock-free hand-off leaves the core free for inference.</td></tr>
+</table>
+
+<h2>6. Academic contribution</h2>
+<p><i>Why not an FPGA, or Linux with DPDK, as real trading firms use?</i> Because that is precisely the gap. Enterprise systems reach low latency by bypassing the kernel with frameworks such as DPDK, and those paradigms are rarely applied to deeply embedded, resource-constrained microcontrollers. This project shows that stripping an RTOS down and applying those architectures, poll-mode scheduling, cache-line partitioning, lock-free IPC, tail-latency-first measurement, brings enterprise-grade determinism to a microcontroller costing a few dollars, and it does so with the baseline built alongside so the improvement is measured rather than asserted.</p>
+<p>The specific, defensible contributions are:</p>
+<ul>
+  <li>A poll-mode scheduling mechanism for Cortex-M that suppresses the scheduler tick <i>without losing real time</i>, via software reconstruction of suppressed SysTick reloads cross-checked against the cycle counter, with the cooperative-contract cost made auditable rather than assumed away.</li>
+  <li>A kernel-enforced non-preemption interlock, so the zero-jitter guarantee survives an interrupt readying a higher-priority task, instead of depending on the tick merely happening to be masked.</li>
+  <li>A like-for-like measurement of lock-based against lock-free IPC on identical hardware and toolchain, separating the cost of the lock from the cost of the memory layout, and reporting the access patterns under which the shadow-index optimisation does <i>not</i> pay.</li>
+  <li>A statement of the determinism argument as a <i>structural</i> property. The lock-free path executes zero interrupt-masking instructions, verifiable directly in the disassembly, rather than as a throughput measurement alone.</li>
+</ul>
+
+<h2>7. Results on hardware</h2>
+<p>All three experiments were run on a WeAct Black Pill (STM32F411CEU6, Cortex-M4, 100 MHz from the external crystal), timed with the DWT cycle counter. FreeRTOS V11.1.0 was built and run on the same board, with the same boot layer, measurement code, compiler, flags, clock and workload, configured to match ours (1 kHz tick, preemptive with time slicing, CLZ task selection, priority-inheritance mutexes). At 100 MHz, 100 cycles = 1 µs. Full results: <code>docs/HARDWARE_RESULTS.md</code>.</p>
+
+<h3>Experiment 2, execution jitter (4,000 blocks)</h3>
+<table>
+  <tr><th>Quantity</th><th>FreeRTOS</th><th>Ours, tick-driven</th><th>Ours, poll mode</th></tr>
+  <tr><td>Uninterrupted block (min)</td><td><b>189</b></td><td>193</td><td>231</td></tr>
+  <tr><td>Worst observed block</td><td>100,431</td><td>100,577</td><td><b>232</b></td></tr>
+  <tr><td>Peak-to-peak jitter</td><td>100,242</td><td>100,384</td><td><b>1</b></td></tr>
+  <tr><td>Blocks hit by the scheduler</td><td>7 / 4,000</td><td>8 / 4,000</td><td><b>0 / 4,000</b></td></tr>
+</table>
+<p>Against FreeRTOS, poll mode reduces the worst-case block from 100,431 to 232 cycles, <b>433×</b>, and collapses peak-to-peak jitter from 100,242 cycles to <b>1</b>. No real time is lost: all 22 suppressed ticks were replayed, with zero overruns and zero violations. The gap between our two minima, 38 cycles per block, is the cost of the poll machinery, reported next to the benefit. FreeRTOS provides no mechanism to suppress its scheduler tick for a critical section: this is a capability difference, not a tuning difference.</p>
+
+<h3>Experiment 3, 64-byte IPC latency (exact medians, cycles per message)</h3>
+<p>Correctness gate (round-trip byte integrity, FIFO ordering, full/empty edges): <b>PASS</b> for all queues, FreeRTOS included.</p>
+<table>
+  <tr><th>Queue</th><th>Ping-pong</th><th>Burst</th><th>Critical sections per message</th></tr>
+  <tr><td>FreeRTOS <code>xQueueSend</code> / <code>xQueueReceive</code></td><td>667</td><td>669</td><td>4</td></tr>
+  <tr><td>Our mutex-queue baseline</td><td>493</td><td>495</td><td>4</td></tr>
+  <tr><td>Our lock-free SPSC</td><td><b>387</b></td><td><b>389</b></td><td><b>0</b></td></tr>
+  <tr><td>Our cache-partitioned SPSC</td><td>391</td><td>390</td><td><b>0</b></td></tr>
+</table>
+<p>The lock-free hot-path queue is <b>1.72×</b> faster than FreeRTOS's queue, and 1.27× faster than our own mutex queue, which isolates the cost of the lock. It enters no critical sections, so it cannot extend the worst-case latency of tasks that never touch the queue. Cache-line partitioning measures at parity (0.98–0.99×), as expected on a part with no data cache.</p>
+
+<h3>Experiment 1, context switch, and the timing bounds (O4)</h3>
+<table>
+  <tr><th>Quantity</th><th>Result</th></tr>
+  <tr><td>Context switch, full PendSV path, &gt; 10<sup>6</sup> samples</td><td><b>57–65 cycles</b> (MPU guard off); 84–95 cycles (MPU guard on)</td></tr>
+  <tr><td>FreeRTOS, task-selection step only (<code>vTaskSwitchContext</code>)</td><td>73–82 cycles</td></tr>
+  <tr><td>Worst interrupts-disabled window</td><td>168 cycles (benchmark); 402 cycles (full demo workload)</td></tr>
+  <tr><td>Priority inheritance, high-priority blocking time</td><td>98 cycles, bounded by the low-priority critical section</td></tr>
+</table>
+
+<div class="box warn">
+  <div class="title">What the comparison does not support</div>
+  FreeRTOS is slightly <i>faster</i> on the uninterrupted path (189 against our 193 cycles, about 2%). This kernel is not the faster kernel at raw execution and is not claimed to be; the claim is determinism. The two context-switch figures time different windows: ours covers the whole switch, FreeRTOS's trace hooks cover only task selection, so the comparison favours FreeRTOS and is stated as such. Cache-line partitioning measures at parity, as expected on a part with no data cache.<br><br>
+  Our own tick-driven mode measures within 0.2% of FreeRTOS in the worst case (100,577 against 100,431 cycles). That is a validation rather than a disappointment: it establishes that the in-house baseline is an honest stand-in, so the improvement measured against it is real.
+</div>
+
+<h2>8. Deliverables and status</h2>
+<table>
+  <tr><th>Deliverable</th><th style="width:36%">Status</th></tr>
+  <tr><td>Preemptive fixed-priority kernel, O(1) scheduling, PendSV/SVC switching</td><td>Complete, builds warning-free at -O2</td></tr>
+  <tr><td>Priority-inheritance mutex, verified against a constructed inversion scenario</td><td>Complete, blocking time measured on hardware (98 cycles)</td></tr>
+  <tr><td>Poll-mode scheduling (O1), with tick replay and violation accounting</td><td>Complete; jitter 100,384 → 1 cycle on hardware</td></tr>
+  <tr><td>Cache-aligned lock-free SPSC ring with shadow indices (O2)</td><td>Complete, correctness-verified on hardware</td></tr>
+  <tr><td>Benchmarking testbed: three experiments plus the like-for-like baseline and FreeRTOS (O3)</td><td>Complete; all experiments run on hardware</td></tr>
+  <tr><td>Schedulability analysis and worst-case interrupts-disabled bound (O4)</td><td>Complete; bound measured on hardware</td></tr>
+  <tr><td>Cycle-accurate measurement on STM32F4 hardware</td><td>Complete, STM32F411 Black Pill at 100 MHz</td></tr>
+  <tr><td>MPU stack-overflow guard</td><td>Complete, enabled on hardware; deliberate-overflow demonstration outstanding</td></tr>
+</table>
+<p>Remaining work, and work deliberately left out of scope, is listed in <code>docs/OUTSTANDING_WORK.md</code>. Hardware results are in <code>docs/HARDWARE_RESULTS.md</code>, defects found and fixed in <code>docs/DEFECTS_AND_FIXES.md</code>, and the QEMU verification run in <code>docs/TEST_RECORD.md</code>.</p>
+
+</body>
+</html>

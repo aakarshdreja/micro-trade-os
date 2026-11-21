@@ -1,11 +1,11 @@
 /* ================================================================
  * gpio.h: Minimal STM32F4 GPIO driver for the jitter benchmark
  *
- * The jitter experiment has to be observable from OUTSIDE the chip:
- * the whole point is that a logic analyser sees a square wave whose
- * edges are evenly spaced, and that the on-chip cycle counts agree
- * with what the scope shows. This driver exists to make that one pin
- * toggle as cheaply and as deterministically as possible.
+ * The jitter experiment needs a workload whose every iteration is the
+ * same instruction sequence, so that any spread in its timing is
+ * interference rather than variation in the work itself. Toggling a
+ * pin is that workload. This driver makes the toggle as cheap and as
+ * deterministic as possible.
  *
  * Deliberately not a HAL. Two design points matter for jitter:
  *

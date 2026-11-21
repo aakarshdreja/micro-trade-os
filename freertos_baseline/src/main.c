@@ -101,7 +101,7 @@ static void put_ratio(uint32_t num, uint32_t den)
 /* ================================================================
  * EXPERIMENT 2 (baseline half), execution jitter
  *
- * Identical to our Phase A: a task toggles PD12 and times blocks of
+ * Identical to our Phase A: a task toggles a GPIO pin and times blocks of
  * JIT_EDGES toggles, with a same-priority partner task running so
  * the tick's time-slicing genuinely deschedules it. FreeRTOS offers
  * no way to suppress its tick for a critical section, so there is no

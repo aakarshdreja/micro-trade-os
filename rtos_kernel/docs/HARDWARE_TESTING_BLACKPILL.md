@@ -19,7 +19,6 @@ because the F411 package has no port D.
 | ST-Link V2 programmer (USB stick type) | flashing, debugging, printing output |
 | 4 female-to-female jumper wires | ST-Link to Black Pill |
 | Laptop with macOS or Linux (Windows: see 1c) | building and running |
-| 8-channel 24 MHz logic analyser + 3 more jumpers (optional) | Step 7 only |
 
 Leave the Black Pill's USB-C port unplugged: the board is powered from the
 ST-Link.
@@ -242,30 +241,16 @@ ctx-switch: n=... min=... mean=... p50=... p99=... p99.9=... max=... cyc
 
 ---
 
-## 7. Test C: Experiment 2, execution jitter (logic analyser optional)
-
-Without a logic analyser, just run it and save the on-chip histogram:
+## 7. Test C: Experiment 2, execution jitter
 
 ```bash
 make bench-jitter HW=1 BOARD=blackpill
 make run-hw 2>&1 | tee ../results_blackpill_jitter.txt
 ```
 
-With a logic analyser, wire it **before** running:
-
-| Logic analyser | Black Pill |
-|---|---|
-| CH0 | **B12** |
-| CH1 | **B13** |
-| GND | **G** (any GND pin) |
-
-In PulseView (or Saleae Logic 2): sample rate 24 MHz, trigger on the
-**rising edge of CH1**, then start the capture and run `make run-hw`.
-CH1 is high for the whole measured window; CH0 is the toggled signal.
-Save the capture for the report (Fig. 3 in Appendix E).
-
-At 24 MHz each sample is about 42 ns, about 4 CPU cycles at 100 MHz, so the
-analyser confirms the shape of the jitter, not single-cycle values.
+The evidence is the on-chip histogram of block times from the DWT counter.
+Phase A (tick-driven) should show a few blocks of about 1 ms; Phase B (poll
+mode) should put every block within a cycle or two of the others.
 
 ---
 
@@ -305,7 +290,7 @@ make flash
 
 This writes `firmware.bin` with st-flash and resets the board. The program
 runs on its own, but **prints nothing**: output needs OpenOCD attached. Use
-this only for logic-analyser captures where the laptop must not stop the CPU.
+it to check that the board runs standalone; for measurements use `make run-hw`.
 
 ---
 
@@ -314,7 +299,6 @@ this only for logic-analyser captures where the laptop must not stop the CPU.
 For every run, keep the `tee` text file and note:
 - board, core clock line, and clock source line from the output
 - `n`, `min`, `p50`, `p99`, `p99.9`, `max` in cycles, and the µs values
-- for Experiment 2, the logic-analyser screenshot
 
 Cycle counts depend on the Cortex-M4 core and compare directly with the
 Discovery board's. **µs values are at 100 MHz**, so they are larger than the

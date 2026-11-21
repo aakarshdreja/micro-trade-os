@@ -875,9 +875,7 @@ DWT counter is cycle-accurate) and inserted into the final report:
 
 - **Fig. 1**, Context-switch latency histogram over ≥10⁶ samples (log-scale y).
 - **Fig. 2**, End-to-end event-to-dispatch latency CDF with p50/p99/p99.9 marked.
-- **Fig. 3**, GPIO-toggle oscilloscope trace of a single context switch, giving
-  an independent measurement of switch time to cross-check the DWT figure.
-- **Fig. 4**, Priority-inversion timeline (with and without inheritance),
+- **Fig. 3**, Priority-inversion timeline (with and without inheritance),
   annotated with the measured blocking interval.
 - **Table 1**, Measured vs. analysed worst-case interrupt-latency for increasing
   numbers of sleeping tasks (validates the `A + B·N` bound).

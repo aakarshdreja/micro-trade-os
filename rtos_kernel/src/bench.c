@@ -171,7 +171,7 @@ void bench_setup(void)
  * THE CLAIM: suppressing the scheduler tick during a critical task
  * removes execution jitter.
  *
- * THE TEST: a task toggles PD12 as fast as it can. It times blocks
+ * THE TEST: a task toggles a GPIO pin as fast as it can. It times blocks
  * of JIT_EDGES toggles and records each block's duration. Every
  * block executes the identical instruction sequence, so in a perfect
  * world every block takes the identical number of cycles and the
@@ -201,13 +201,6 @@ void bench_setup(void)
  * MINIMUM, an uninterrupted block, and the gap between the two
  * minima is the cost of the poll machinery itself, which the report
  * prints rather than absorbs.
- *
- * EXTERNAL CONFIRMATION: PD13 is held high for the whole measured
- * window, so a logic analyser triggered on PD13 captures exactly the
- * blocks that produced the printed numbers. On the scope Phase A
- * shows a square wave with visible period outliers; Phase B shows a
- * uniform one. The on-chip histogram and the captured waveform are
- * two independent views of the same claim.
  *
  * WHY THE POLL SECTION WRAPS ONE BLOCK, NOT THE WHOLE PHASE:
  * a section must stay shorter than one tick period for the kernel's
@@ -373,7 +366,7 @@ static void jitter_reporter(void *a)
 void bench_setup(void)
 {
     sh_puts("Mode: EXPERIMENT 2 - execution jitter (poll mode)\r\n");
-    sh_puts("Logic-analyser probe pins: " BOARD_PIN_NAMES "\r\n");
+    sh_puts("GPIO workload pins: " BOARD_PIN_NAMES "\r\n");
     gpio_init();
     /* Bin width is chosen from the DATA, not by habit: Phase A blocks
      * run to tens of thousands of cycles when the tick preempts them,

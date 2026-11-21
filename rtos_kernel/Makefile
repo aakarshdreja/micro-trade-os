@@ -165,7 +165,7 @@ bench-ctxsw:
 bench-jitter:
 	$(MAKE) clean
 	$(MAKE) CPU_MHZ=$(BENCH_CPU_MHZ) EXTRA_DEFS="-DRTOS_BENCH_JITTER=1 $(BENCH_HW_DEFS)"
-	@echo "Experiment 2 (execution jitter) built. Probe $(BOARD_PINS)."
+	@echo "Experiment 2 (execution jitter) built. GPIO workload on $(BOARD_PINS)."
 
 # Experiment 3, 64-byte IPC latency: mutex queue vs lock-free vs cache-aligned
 bench-ipc:
