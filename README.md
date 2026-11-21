@@ -80,6 +80,7 @@ rather than cited.
 | Document | Contents |
 |---|---|
 | [`docs/HARDWARE_RESULTS.md`](rtos_kernel/docs/HARDWARE_RESULTS.md) | **Hardware results** on the STM32F411 Black Pill, compared with FreeRTOS: why this kernel is better, and its features |
+| [`results/`](results/) | Raw board output of every hardware run, one file per experiment, with an index |
 | [`docs/HARDWARE_TESTING_BLACKPILL.md`](rtos_kernel/docs/HARDWARE_TESTING_BLACKPILL.md) | Step-by-step procedure to reproduce the hardware results |
 | [`docs/TEST_RECORD.md`](rtos_kernel/docs/TEST_RECORD.md) | Results of an actual QEMU run of every build and every experiment: commands and verbatim output |
 | [`docs/DEFECTS_AND_FIXES.md`](rtos_kernel/docs/DEFECTS_AND_FIXES.md) | Defects found and fixed during development, with root cause and confirmation |

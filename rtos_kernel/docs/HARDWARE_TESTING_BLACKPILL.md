@@ -158,7 +158,7 @@ If either fails, go to **Troubleshooting** at the end before continuing.
 ```bash
 cd rtos_kernel
 make hw BOARD=blackpill
-make run-hw 2>&1 | tee ../results_blackpill_demo.txt
+make run-hw 2>&1 | tee ../results/results_blackpill_demo.txt
 ```
 
 `make run-hw` flashes the board with OpenOCD, turns semihosting on and starts
@@ -225,7 +225,7 @@ If HSE failed, the first value is `0x04003210` instead.
 
 ```bash
 make bench-ctxsw HW=1 BOARD=blackpill
-make run-hw 2>&1 | tee ../results_blackpill_ctxsw.txt
+make run-hw 2>&1 | tee ../results/results_blackpill_ctxsw.txt
 ```
 
 Wait for `switches collected = ... / 1000000` to finish and the report to print.
@@ -245,7 +245,7 @@ ctx-switch: n=... min=... mean=... p50=... p99=... p99.9=... max=... cyc
 
 ```bash
 make bench-jitter HW=1 BOARD=blackpill
-make run-hw 2>&1 | tee ../results_blackpill_jitter.txt
+make run-hw 2>&1 | tee ../results/results_blackpill_jitter.txt
 ```
 
 The evidence is the on-chip histogram of block times from the DWT counter.
@@ -258,7 +258,7 @@ mode) should put every block within a cycle or two of the others.
 
 ```bash
 make bench-ipc HW=1 BOARD=blackpill
-make run-hw 2>&1 | tee ../results_blackpill_ipc.txt
+make run-hw 2>&1 | tee ../results/results_blackpill_ipc.txt
 ```
 
 Record the three subjects (mutex queue, lock-free SPSC, cache-aligned SPSC).
@@ -269,9 +269,9 @@ Record the three subjects (mutex queue, lock-free SPSC, cache-aligned SPSC).
 
 ```bash
 cd ../freertos_baseline
-make bench-ctxsw  HW=1 BOARD=blackpill && make run-hw 2>&1 | tee ../results_blackpill_frtos_ctxsw.txt
-make bench-jitter HW=1 BOARD=blackpill && make run-hw 2>&1 | tee ../results_blackpill_frtos_jitter.txt
-make bench-ipc    HW=1 BOARD=blackpill && make run-hw 2>&1 | tee ../results_blackpill_frtos_ipc.txt
+make bench-ctxsw  HW=1 BOARD=blackpill && make run-hw 2>&1 | tee ../results/results_blackpill_frtos_ctxsw.txt
+make bench-jitter HW=1 BOARD=blackpill && make run-hw 2>&1 | tee ../results/results_blackpill_frtos_jitter.txt
+make bench-ipc    HW=1 BOARD=blackpill && make run-hw 2>&1 | tee ../results/results_blackpill_frtos_ipc.txt
 ```
 
 Press Ctrl+C after each report prints before starting the next one.

@@ -32,7 +32,7 @@ At 100 MHz, **1 cycle = 10 ns** and **100 cycles = 1 µs**. Cycle counts belong 
 the Cortex-M4 core, so they carry over directly to other STM32F4 parts such as
 the STM32F407 Discovery; only the microsecond figures depend on the clock.
 
-Raw output of every run is in the repository root: `results_blackpill_*.txt`.
+Raw output of every run is in the [`results/`](../../results/) folder at the top of the repository, which lists each file and what it contains.
 
 ---
 
