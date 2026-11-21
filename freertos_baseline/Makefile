@@ -75,7 +75,7 @@ OBJS = $(addprefix $(BUILD_DIR)/app_,$(notdir $(APP_SRCS:.c=.o))) \
 QEMU = qemu-system-arm -machine olimex-stm32-h405 -nographic \
        -semihosting-config enable=on,target=native -kernel $(TARGET).elf
 
-.PHONY: all clean qemu bench-jitter bench-ipc bench-ctxsw flash run-hw FORCE
+.PHONY: all clean qemu bench-jitter bench-ipc bench-ctxsw flash run-hw check-image FORCE
 
 all: $(BUILD_DIR) $(TARGET).elf $(TARGET).bin
 	@echo "\n=== FreeRTOS baseline build complete ==="
@@ -130,9 +130,17 @@ qemu: $(TARGET).elf
 # make bench-jitter HW=1 BOARD=blackpill && make run-hw
 OPENOCD = openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
 
-flash: $(TARGET).bin
+# Never rebuild here (see rtos_kernel/Makefile): flash what was built.
+check-image:
+	@test -f $(TARGET).elf || { echo "No $(TARGET).elf. Build first, e.g. make bench-ctxsw HW=1 BOARD=blackpill"; exit 1; }
+	@grep -q -e '-DRTOS_HW=1' $(BUILD_DIR)/.buildflags 2>/dev/null || { \
+	    echo "$(TARGET).elf is a QEMU build. Rebuild with HW=1 BOARD=blackpill"; exit 1; }
+	@echo "Hardware image flags: $$(cat $(BUILD_DIR)/.buildflags)"
+	@$(OBJCOPY) -O binary $(TARGET).elf $(TARGET).bin
+
+flash: check-image
 	st-flash --reset write $(TARGET).bin 0x08000000
 
-run-hw: $(TARGET).elf
+run-hw: check-image
 	$(OPENOCD) -c "program $(TARGET).elf verify" -c "reset halt" \
 	    -c "arm semihosting enable" -c "resume"

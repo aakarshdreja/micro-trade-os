@@ -1,0 +1,126 @@
+Hardware image flags: -DRTOS_CPU_MHZ=100 -DRTOS_HW=1 -DBOARD_BLACKPILL_F411=1 -DRTOS_ENABLE_MPU=1
+openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c "program firmware.elf verify" -c "reset halt" \
+	    -c "arm semihosting enable" -c "resume"
+Open On-Chip Debugger 0.12.0
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+Info : auto-selecting first available session transport "hla_swd". To override use 'transport select <transport>'.
+Info : The selected transport took over low-level target control. The results might differ compared to plain JTAG/SWD
+Info : clock speed 2000 kHz
+Info : STLINK V2J37S7 (API v2) VID:PID 0483:3748
+Info : Target voltage: 3.298593
+Info : [stm32f4x.cpu] Cortex-M4 r0p1 processor detected
+Info : [stm32f4x.cpu] target has 6 breakpoints, 4 watchpoints
+Info : starting gdb server for stm32f4x.cpu on 3333
+Info : Listening on port 3333 for gdb connections
+[stm32f4x.cpu] halted due to breakpoint, current mode: Handler HardFault
+xPSR: 0x81000003 pc: 0x08000044 msp: 0x2001ffa8
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001ff8 msp: 0x20020000
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+Info : Unable to match requested speed 8000 kHz, using 4000 kHz
+** Programming Started **
+Info : device id = 0x10006431
+Info : flash size = 512 KiB
+** Programming Finished **
+** Verify Started **
+** Verified OK **
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+Info : Unable to match requested speed 2000 kHz, using 1800 kHz
+[stm32f4x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x08001ff8 msp: 0x20020000
+semihosting is enabled
+
+Info : Listening on port 6666 for tcl connections
+Info : Listening on port 4444 for telnet connections
+
+=====================================================
+  Deterministic low-latency RTOS kernel (Cortex-M4)
+  preemptive FP scheduler | PI mutex | poll-mode
+  cache-aligned lock-free SPSC IPC
+=====================================================
+Board: WeAct Black Pill STM32F411CEU6
+Core clock: 100 MHz (PLL from 25 MHz HSE crystal)
+DWT cycle counter: available (hardware, cycle-accurate)
+
+--- Schedulability analysis (RMA) ---
+  dispatch: C=50 T=1000 U=0.050
+  feed: C=40 T=1000 U=0.040
+  signal: C=70 T=1000 U=0.070
+  Total U=0.160  LL-bound=0.779  => PASS (U bound)
+  R(dispatch)=50 <= T? yes
+  R(feed)=90 <= T? yes
+  R(signal)=160 <= T? yes
+  => Task set is SCHEDULABLE (RTA)
+
+Starting scheduler...
+
+--- Priority-inversion test ---
+pi_high blocked for 98 cycles (~0 us)
+Blocking is bounded by pi_low's critical section, NOT by
+pi_med - priority inheritance prevented unbounded inversion.
+[DISPATCH] SELL seq=15 px=10021 lat=99784 cyc
+[DISPATCH] SELL seq=756 px=9908 lat=99762 cyc
+[DISPATCH] SELL seq=1476 px=9827 lat=99762 cyc
+
+===== Latency report #1 =====
+cycle source: DWT (cycle-accurate)
+ctx-switch : n=8010 min=90 mean=90 p50=96 p99=104 p99.9=104 max=98 cyc
+            (us)  min=0.90 mean=0.90 p50=0.96 p99=1.04 p99.9=1.04 max=0.98
+e2e latency: n=165 min=98988 mean=99715 p50=99784 p99=99784 p99.9=99784 max=99784 cyc
+            *** 165 of 165 samples exceeded the histogram range (bin_width=512 x 64 bins). min/mean/max are exact; percentiles are
+                approximate - increase bin_width. ***
+            (us)  min=989.88 mean=997.15 p50=997.84 p99=997.84 p99.9=997.84 max=997.84
+max IRQ-disabled window = 402 cyc (~4 us)
+poll-mode: sections=165 ticks_replayed=0 deferred_switch=0 overruns=0 violations=0 max_section=368 cyc
+orders dispatched = 165  q_price depth = 0  q_order depth = 0
+[DISPATCH] SELL seq=2276 px=10263 lat=99762 cyc
+[DISPATCH] SELL seq=2963 px=10133 lat=98999 cyc
+[DISPATCH] SELL seq=3663 px=10188 lat=99762 cyc
+
+===== Latency report #2 =====
+cycle source: DWT (cycle-accurate)
+ctx-switch : n=16011 min=90 mean=90 p50=96 p99=104 p99.9=104 max=98 cyc
+            (us)  min=0.90 mean=0.90 p50=0.96 p99=1.04 p99.9=1.04 max=0.98
+e2e latency: n=336 min=98988 mean=99697 p50=99784 p99=99784 p99.9=99784 max=99784 cyc
+            *** 336 of 336 samples exceeded the histogram range (bin_width=512 x 64 bins). min/mean/max are exact; percentiles are
+                approximate - increase bin_width. ***
+            (us)  min=989.88 mean=996.97 p50=997.84 p99=997.84 p99.9=997.84 max=997.84
+max IRQ-disabled window = 402 cyc (~4 us)
+poll-mode: sections=336 ticks_replayed=0 deferred_switch=0 overruns=0 violations=0 max_section=368 cyc
+ctx-switch histogram (cycles):
+  [88,96) 15674
+  [96,104) 337
+e2e latency histogram (cycles):
+  [32768+       ) 336
+orders dispatched = 336  q_price depth = 0  q_order depth = 0
+[DISPATCH] SELL seq=4724 px=10223 lat=99762 cyc
+[DISPATCH] SELL seq=5448 px=10601 lat=99762 cyc
+
+===== Latency report #3 =====
+cycle source: DWT (cycle-accurate)
+ctx-switch : n=24012 min=90 mean=90 p50=96 p99=104 p99.9=104 max=98 cyc
+            (us)  min=0.90 mean=0.90 p50=0.96 p99=1.04 p99.9=1.04 max=0.98
+e2e latency: n=503 min=98988 mean=99692 p50=99784 p99=99784 p99.9=99784 max=99784 cyc
+            *** 503 of 503 samples exceeded the histogram range (bin_width=512 x 64 bins). min/mean/max are exact; percentiles are
+                approximate - increase bin_width. ***
+            (us)  min=989.88 mean=996.92 p50=997.84 p99=997.84 p99.9=997.84 max=997.84
+max IRQ-disabled window = 402 cyc (~4 us)
+poll-mode: sections=503 ticks_replayed=0 deferred_switch=0 overruns=0 violations=0 max_section=368 cyc
+orders dispatched = 503  q_price depth = 0  q_order depth = 0
+[DISPATCH] SELL seq=6142 px=9870 lat=99762 cyc
+[DISPATCH] SELL seq=7041 px=9870 lat=99762 cyc
+[DISPATCH] SELL seq=7779 px=9435 lat=99762 cyc
+
+===== Latency report #4 =====
+cycle source: DWT (cycle-accurate)
+ctx-switch : n=32013 min=90 mean=90 p50=96 p99=104 p99.9=104 max=98 cyc
+            (us)  min=0.90 mean=0.90 p50=0.96 p99=1.04 p99.9=1.04 max=0.98
+e2e latency: n=655 min=98590 mean=99690 p50=99784 p99=99784 p99.9=99784 max=99784 cyc
+            *** 655 of 655 samples exceeded the histogram range (bin_width=512 x 64 bins). min/mean/max are exact; percentiles are
+                approximate - increase bin_width. ***
+            (us)  min=985.90 mean=996.90 p50=997.84 p99=997.84 p99.9=997.84 max=997.84shutdown command invoked
+make: *** [run-hw] Terminated: 15

@@ -147,7 +147,7 @@ openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
 ```
 
 Expected lines include `Cortex-M4 r0p1 processor detected` and
-`8 breakpoints, 4 watchpoints`, then
+`target has 6 breakpoints, 4 watchpoints`, then
 `Listening on port 3333 for gdb connections`. Press **Ctrl+C** to stop it.
 
 If either fails, go to **Troubleshooting** at the end before continuing.

@@ -120,7 +120,7 @@ QEMU = qemu-system-arm                              \
        -semihosting-config enable=on,target=native  \
        -kernel $(TARGET).elf
 
-.PHONY: all clean qemu debug hw flash ocd run-hw gdb \
+.PHONY: all clean qemu debug hw flash ocd run-hw gdb check-image \
         bench bench-ctxsw bench-jitter bench-ipc bench-all
 
 all: $(BUILD_DIR) $(TARGET).elf $(TARGET).bin
@@ -192,17 +192,27 @@ bench-all:
 # separate ST-Link V2 used with the Black Pill speak the same SWD.
 OPENOCD = openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
 
-flash: $(TARGET).bin
+# flash/run-hw/gdb use the image already built and never rebuild it:
+# a rebuild here would not see the HW=1 BOARD=... flags the image was
+# built with, and would silently flash a QEMU image instead.
+check-image:
+	@test -f $(TARGET).elf || { echo "No $(TARGET).elf. Build first, e.g. make hw BOARD=blackpill"; exit 1; }
+	@grep -q -e '-DRTOS_HW=1' $(BUILD_DIR)/.buildflags 2>/dev/null || { \
+	    echo "$(TARGET).elf is a QEMU build. Rebuild with HW=1, e.g. make hw BOARD=blackpill"; exit 1; }
+	@echo "Hardware image flags: $$(cat $(BUILD_DIR)/.buildflags)"
+	@$(OBJCOPY) -O binary $(TARGET).elf $(TARGET).bin
+
+flash: check-image
 	st-flash --reset write $(TARGET).bin 0x08000000
 
-run-hw: $(TARGET).elf
+run-hw: check-image
 	$(OPENOCD) -c "program $(TARGET).elf verify" -c "reset halt" \
 	    -c "arm semihosting enable" -c "resume"
 
 ocd:
 	$(OPENOCD) -c "init" -c "reset halt" -c "arm semihosting enable"
 
-gdb: $(TARGET).elf
+gdb: check-image
 	$(GDB) $(TARGET).elf -ex "target extended-remote :3333" \
 	    -ex "monitor arm semihosting enable" -ex "load" \
 	    -ex "monitor reset halt"

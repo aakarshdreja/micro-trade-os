@@ -627,10 +627,19 @@ void rtos_mpu_on_switch(void)
     tcb_t *t = rtos_current_task;
     if (t == 0 || t->stack_base == 0) { return; }
 
-    /* Region 7 = 32 bytes, no access, at the (32-byte aligned) base
-     * of the incoming task's stack. RASR: SIZE field = log2(32)-1 = 4,
-     * AP = 000 (no access, privileged or not), ENABLE = 1. */
-    uint32_t base = (uint32_t)t->stack_base & ~0x1FUL;
+    /* Region 7 = 32 bytes, no access, at the first 32-byte boundary
+     * INSIDE the incoming task's stack. RASR: SIZE field =
+     * log2(32)-1 = 4, AP = 000 (no access, privileged or not),
+     * ENABLE = 1.
+     *
+     * Round UP, never down. A stack array is only guaranteed 4-byte
+     * alignment; rounding its base down would put up to 28 bytes of
+     * the PRECEDING object inside the no-access region. Found on the
+     * Black Pill: idle_stack sat at 0x20000024, the guard rounded to
+     * 0x20000020 and covered g_mpu_enabled, which this very function
+     * reads from PendSV, so the first switch after idle HardFaulted.
+     * Rounding up costs at most 28 bytes of the task's own stack. */
+    uint32_t base = ((uint32_t)t->stack_base + 0x1FUL) & ~0x1FUL;
     MPU_RNR  = 7u;
     MPU_RBAR = base | (1u << 4) | 7u;     /* VALID + region number 7 */
     MPU_RASR = (0u << 24) | (4u << 1) | 1u;
