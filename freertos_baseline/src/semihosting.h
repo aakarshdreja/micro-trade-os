@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 /* SYS_WRITE0 (0x04): Write a null-terminated string to the host console */
 #define SEMIHOSTING_SYS_WRITE0  0x04
 
@@ -28,5 +30,14 @@ static inline int semihosting_call(int reason, void *arg)
 /* sh_puts(). Print a null-terminated string to the host terminal */
 static inline void sh_puts(const char *s)
 {
+#ifdef RTOS_HW
+    /* On silicon, BKPT with no debugger attached escalates to a
+     * HardFault and the board stops dead. DHCSR.C_DEBUGEN (bit 0) is
+     * set only while a debugger (OpenOCD via the ST-Link) holds the
+     * core, so check it and stay silent when running standalone. */
+    if (((*(volatile uint32_t *)0xE000EDF0UL) & 1u) == 0u) {
+        return;
+    }
+#endif
     semihosting_call(SEMIHOSTING_SYS_WRITE0, (void *)s);
 }

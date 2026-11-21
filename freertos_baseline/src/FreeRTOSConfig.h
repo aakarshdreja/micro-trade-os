@@ -33,7 +33,12 @@
 #define configUSE_IDLE_HOOK                     0
 #define configUSE_TICK_HOOK                     0
 
-#define configCPU_CLOCK_HZ                      ( 8000000UL )   /* QEMU model */
+/* RTOS_CPU_MHZ comes from the Makefile: 8 on QEMU, the board's PLL
+ * frequency on hardware (168 Discovery, 100 Black Pill). */
+#ifndef RTOS_CPU_MHZ
+#define RTOS_CPU_MHZ                            8
+#endif
+#define configCPU_CLOCK_HZ                      ( RTOS_CPU_MHZ * 1000000UL )
 #define configTICK_RATE_HZ                      ( 1000 )        /* 1 kHz, as ours */
 #define configMAX_PRIORITIES                    ( 8 )           /* as RTOS_MAX_PRIORITIES */
 #define configMINIMAL_STACK_SIZE                ( 128 )

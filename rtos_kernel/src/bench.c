@@ -373,6 +373,7 @@ static void jitter_reporter(void *a)
 void bench_setup(void)
 {
     sh_puts("Mode: EXPERIMENT 2 - execution jitter (poll mode)\r\n");
+    sh_puts("Logic-analyser probe pins: " BOARD_PIN_NAMES "\r\n");
     gpio_init();
     /* Bin width is chosen from the DATA, not by habit: Phase A blocks
      * run to tens of thousands of cycles when the tick preempts them,

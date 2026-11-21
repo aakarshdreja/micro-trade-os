@@ -18,7 +18,7 @@ OBJCOPY  = $(PREFIX)objcopy
 SIZE     = $(PREFIX)size
 
 # GDB: use gdb-multiarch on Ubuntu/Debian, arm-none-eabi-gdb elsewhere
-GDB      = gdb-multiarch
+GDB     ?= $(shell command -v gdb-multiarch >/dev/null 2>&1 && echo gdb-multiarch || echo arm-none-eabi-gdb)
 
 TARGET   = firmware
 
@@ -36,6 +36,7 @@ C_SRCS   = $(SRC_DIR)/main.c           \
            $(SRC_DIR)/queue_baseline.c \
            $(SRC_DIR)/stats.c          \
            $(SRC_DIR)/gpio.c           \
+           $(SRC_DIR)/clock.c          \
            $(SRC_DIR)/app_demo.c       \
            $(SRC_DIR)/bench.c          \
            $(SRC_DIR)/libc_stubs.c
@@ -48,11 +49,37 @@ ALL_OBJS = $(C_OBJS) $(ASM_OBJS)
 
 LDSCRIPT = $(LD_DIR)/linker.ld
 
+# ---- Hardware board selection ----------------------------------
+# HW=1 builds for silicon; BOARD picks which one:
+#   BOARD=disc       STM32F4 Discovery (STM32F407VG), 168 MHz  (default)
+#   BOARD=blackpill  WeAct Black Pill (STM32F411CEU6), 100 MHz
+# Without HW=1 the image targets QEMU and BOARD is ignored.
+BOARD ?= disc
+ifeq ($(BOARD),blackpill)
+BOARD_MHZ = 100
+BOARD_LD  = linker_f411.ld
+BOARD_DEF = -DBOARD_BLACKPILL_F411=1
+BOARD_PINS = PB12 (signal), PB13 (window)
+else ifeq ($(BOARD),disc)
+BOARD_MHZ = 168
+BOARD_LD  = linker.ld
+BOARD_DEF = -DBOARD_DISC_F407=1
+BOARD_PINS = PD12 (signal), PD13 (window)
+else
+$(error Unknown BOARD '$(BOARD)'. Use BOARD=disc or BOARD=blackpill)
+endif
+
+ifdef HW
+LDSCRIPT = $(LD_DIR)/$(BOARD_LD)
+HW_DEFS  = -DRTOS_HW=1 $(BOARD_DEF)
+CPU_MHZ ?= $(BOARD_MHZ)
+endif
+
 # ---- Configurable build defines --------------------------------
-# CPU_MHZ    : core clock (8 for QEMU olimex model, 168 for hardware)
+# CPU_MHZ    : core clock (8 for QEMU olimex model; set from BOARD on HW)
 # EXTRA_DEFS : extra -D flags (e.g. -DRTOS_ENABLE_MPU, -DRTOS_BENCH)
 CPU_MHZ  ?= 8
-DEFS      = -DRTOS_CPU_MHZ=$(CPU_MHZ) $(EXTRA_DEFS)
+DEFS      = -DRTOS_CPU_MHZ=$(CPU_MHZ) $(HW_DEFS) $(EXTRA_DEFS)
 
 # ---- Flags -----------------------------------------------------
 CFLAGS = -mcpu=cortex-m4    \
@@ -93,18 +120,20 @@ QEMU = qemu-system-arm                              \
        -semihosting-config enable=on,target=native  \
        -kernel $(TARGET).elf
 
-.PHONY: all clean qemu debug hw flash \
+.PHONY: all clean qemu debug hw flash ocd run-hw gdb \
         bench bench-ctxsw bench-jitter bench-ipc bench-all
 
 all: $(BUILD_DIR) $(TARGET).elf $(TARGET).bin
 	@echo "\n=== Build complete ==="
 	$(SIZE) $(TARGET).elf
 
-# ---- Hardware build (STM32F4 Discovery, 168 MHz, MPU guard on) --
+# ---- Hardware build (full clock, MPU guard on) -----------------
+# make hw                  -> STM32F4 Discovery, 168 MHz
+# make hw BOARD=blackpill  -> Black Pill F411, 100 MHz
 hw:
 	$(MAKE) clean
-	$(MAKE) CPU_MHZ=168 EXTRA_DEFS="-DRTOS_ENABLE_MPU=1"
-	@echo "Hardware image built (168 MHz, MPU stack guard enabled)."
+	$(MAKE) HW=1 CPU_MHZ=$(BOARD_MHZ) EXTRA_DEFS="-DRTOS_ENABLE_MPU=1"
+	@echo "Hardware image built for BOARD=$(BOARD) ($(BOARD_MHZ) MHz, MPU stack guard enabled)."
 
 # ================================================================
 # Benchmarking testbed. Three experiments, three separate images.
@@ -115,11 +144,11 @@ hw:
 # the scheduler. Building them separately also keeps each image small
 # enough that code layout cannot drift between runs.
 #
-# Append HW=1 to any of these to build the 168 MHz hardware image
-# with the MPU stack guard on, e.g.:  make bench-jitter HW=1
+# Append HW=1 to any of these to build the hardware image with the
+# MPU stack guard on, e.g.:  make bench-jitter HW=1 BOARD=blackpill
 # ================================================================
 ifdef HW
-BENCH_CPU_MHZ = 168
+BENCH_CPU_MHZ = $(BOARD_MHZ)
 BENCH_HW_DEFS = -DRTOS_ENABLE_MPU=1
 else
 BENCH_CPU_MHZ = $(CPU_MHZ)
@@ -136,7 +165,7 @@ bench-ctxsw:
 bench-jitter:
 	$(MAKE) clean
 	$(MAKE) CPU_MHZ=$(BENCH_CPU_MHZ) EXTRA_DEFS="-DRTOS_BENCH_JITTER=1 $(BENCH_HW_DEFS)"
-	@echo "Experiment 2 (execution jitter) built. Probe PD12 (signal), PD13 (window)."
+	@echo "Experiment 2 (execution jitter) built. Probe $(BOARD_PINS)."
 
 # Experiment 3, 64-byte IPC latency: mutex queue vs lock-free vs cache-aligned
 bench-ipc:
@@ -153,10 +182,30 @@ bench-all:
 	$(MAKE) bench-jitter && $(MAKE) qemu-run
 	$(MAKE) bench-ipc    && $(MAKE) qemu-run
 
-# ---- Flash to STM32F4 Discovery --------------------------------
-# Uses st-flash (stlink). Alternative: OpenOCD (see README).
+# ---- Flash and run on hardware (ST-Link + OpenOCD) -------------
+# flash  : write firmware.bin with st-flash (stlink tools), then reset.
+# run-hw : flash with OpenOCD, enable semihosting and run; the
+#          firmware's output prints in THIS terminal. Ctrl+C to stop.
+# ocd    : start OpenOCD as a GDB server on :3333 (semihosting on),
+#          then use 'make gdb' in a second terminal.
+# Works for both boards: the Discovery's on-board ST-LINK and the
+# separate ST-Link V2 used with the Black Pill speak the same SWD.
+OPENOCD = openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+
 flash: $(TARGET).bin
-	st-flash write $(TARGET).bin 0x08000000
+	st-flash --reset write $(TARGET).bin 0x08000000
+
+run-hw: $(TARGET).elf
+	$(OPENOCD) -c "program $(TARGET).elf verify" -c "reset halt" \
+	    -c "arm semihosting enable" -c "resume"
+
+ocd:
+	$(OPENOCD) -c "init" -c "reset halt" -c "arm semihosting enable"
+
+gdb: $(TARGET).elf
+	$(GDB) $(TARGET).elf -ex "target extended-remote :3333" \
+	    -ex "monitor arm semihosting enable" -ex "load" \
+	    -ex "monitor reset halt"
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)

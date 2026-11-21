@@ -33,9 +33,16 @@
 
 #include "semihosting.h"
 #include "gpio.h"
+#include "board.h"
 #include "rtos.h"          /* for rtos_stats_t and the stats API only */
 
-#define CPU_MHZ            8u
+/* Core clock in MHz, from the Makefile (8 on QEMU, the board's PLL
+ * frequency on hardware). Must match the real clock or the SysTick
+ * period, and with it every cycle count below, is wrong. */
+#ifndef RTOS_CPU_MHZ
+#define RTOS_CPU_MHZ       8u
+#endif
+#define CPU_MHZ            ((uint32_t)RTOS_CPU_MHZ)
 #define SYSTICK_RELOAD     ( CPU_MHZ * 1000u - 1u )
 #define SYSTICK_VAL_REG    (*(volatile uint32_t *)0xE000E018UL)
 
@@ -320,10 +327,17 @@ static void jitter_reporter(void *a)
 /* ================================================================ */
 int main(void)
 {
+    /* Hardware builds: PLL to full speed before anything is timed. */
+    const char *clock = board_clock_init();
+
     sh_puts("\r\n=====================================================\r\n");
     sh_puts("  FreeRTOS BASELINE  (kernel V11.1.0, ARM_CM3 port)\r\n");
-    sh_puts("  8 MHz | 1 kHz tick | preemptive + time slicing\r\n");
+    sh_puts("  1 kHz tick | preemptive + time slicing\r\n");
     sh_puts("=====================================================\r\n");
+#ifdef RTOS_HW
+    sh_puts("Board: " BOARD_NAME "\r\n");
+#endif
+    sh_puts("Core clock: "); sh_puts(clock); sh_puts("\r\n");
 
     gpio_init();
     rtos_stats_init(&rtos_switch_stats, 8u);

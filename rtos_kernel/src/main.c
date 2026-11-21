@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include "rtos.h"
 #include "semihosting.h"
+#include "board.h"
 
 #if defined(RTOS_BENCH_CTXSW) || defined(RTOS_BENCH_JITTER) || defined(RTOS_BENCH_IPC)
 #  define RTOS_BENCH_BUILD 1
@@ -33,11 +34,19 @@ void app_demo_setup(void);     /* app_demo.c */
 
 int main(void)
 {
+    /* Hardware builds: run the PLL up to full speed before anything
+     * prints or is timed. No-op on QEMU. */
+    const char *clock = board_clock_init();
+
     sh_puts("\r\n=====================================================\r\n");
     sh_puts("  Deterministic low-latency RTOS kernel (Cortex-M4)\r\n");
     sh_puts("  preemptive FP scheduler | PI mutex | poll-mode\r\n");
     sh_puts("  cache-aligned lock-free SPSC IPC\r\n");
     sh_puts("=====================================================\r\n");
+#ifdef RTOS_HW
+    sh_puts("Board: " BOARD_NAME "\r\n");
+#endif
+    sh_puts("Core clock: "); sh_puts(clock); sh_puts("\r\n");
 
     /* The cycle counter must come up before anything is timed. On
      * silicon this is DWT->CYCCNT; QEMU does not implement it, so the

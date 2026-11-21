@@ -1,5 +1,5 @@
 /* ================================================================
- * gpio.h: Minimal STM32F407 GPIO driver for the jitter benchmark
+ * gpio.h: Minimal STM32F4 GPIO driver for the jitter benchmark
  *
  * The jitter experiment has to be observable from OUTSIDE the chip:
  * the whole point is that a logic analyser sees a square wave whose
@@ -17,21 +17,24 @@
  *  - The pin is configured at maximum output speed so the edge rate
  *    is a property of the pad, not of the driver.
  *
- * Pins used (STM32F4 Discovery on-board LEDs, brought out on the
- * header so a probe can reach them):
- *    PD12 green. The toggled signal under test
- *    PD13 orange. A marker: high for the whole measured window
+ * Pins used (chosen per board in board.h):
+ *    Discovery : PD12 (green LED), PD13 (orange LED), on the header
+ *    Black Pill: PB12, PB13, on the edge header
+ *  The first is the toggled signal under test; the second is a marker,
+ *  high for the whole measured window.
  * ================================================================ */
 
 #ifndef RTOS_GPIO_H
 #define RTOS_GPIO_H
 
 #include <stdint.h>
+#include "board.h"
 
-#define GPIO_PIN_SIGNAL   12u    /* PD12. Square wave under test */
-#define GPIO_PIN_MARKER   13u    /* PD13, measurement-window marker */
+#define GPIO_PIN_SIGNAL   BOARD_PIN_SIGNAL   /* square wave under test     */
+#define GPIO_PIN_MARKER   BOARD_PIN_MARKER   /* measurement-window marker  */
 
-/* Enable GPIOD's clock and configure the two pins as fast outputs. */
+/* Enable the probe port's clock and configure the two pins as fast
+ * outputs. */
 void gpio_init(void);
 
 /* Single-store, read-modify-write-free pin control via BSRR.
@@ -39,18 +42,18 @@ void gpio_init(void);
  * so the benchmark's inner loop contains the store itself rather
  * than a call. A call would add its own fixed cost to every edge
  * and blunt exactly what we are trying to measure. */
-#define GPIOD_BSRR  (*(volatile uint32_t *)(0x40020C00UL + 0x18UL))
+#define GPIO_PROBE_BSRR  (*(volatile uint32_t *)(BOARD_GPIO_BASE + 0x18UL))
 
 __attribute__((always_inline))
 static inline void gpio_set(uint32_t pin)
 {
-    GPIOD_BSRR = (1UL << pin);
+    GPIO_PROBE_BSRR = (1UL << pin);
 }
 
 __attribute__((always_inline))
 static inline void gpio_clear(uint32_t pin)
 {
-    GPIOD_BSRR = (1UL << (pin + 16u));
+    GPIO_PROBE_BSRR = (1UL << (pin + 16u));
 }
 
 #endif /* RTOS_GPIO_H */

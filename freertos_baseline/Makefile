@@ -23,9 +23,31 @@ LD_DIR      = ld
 BUILD_DIR   = build
 FR          = external/FreeRTOS-Kernel
 
+# Hardware board selection, same as rtos_kernel. HW=1 builds for
+# silicon; BOARD=disc (Discovery F407, 168 MHz, default) or
+# BOARD=blackpill (Black Pill F411, 100 MHz).
+LDSCRIPT = $(LD_DIR)/linker.ld
+BOARD ?= disc
+ifeq ($(BOARD),blackpill)
+BOARD_MHZ = 100
+BOARD_LD  = linker_f411.ld
+BOARD_DEF = -DBOARD_BLACKPILL_F411=1
+else ifeq ($(BOARD),disc)
+BOARD_MHZ = 168
+BOARD_LD  = linker.ld
+BOARD_DEF = -DBOARD_DISC_F407=1
+else
+$(error Unknown BOARD '$(BOARD)'. Use BOARD=disc or BOARD=blackpill)
+endif
+ifdef HW
+LDSCRIPT = $(LD_DIR)/$(BOARD_LD)
+HW_DEFS  = -DRTOS_HW=1 $(BOARD_DEF)
+CPU_MHZ ?= $(BOARD_MHZ)
+endif
+
 CPU_MHZ    ?= 8
 EXTRA_DEFS ?=
-DEFS        = -DRTOS_CPU_MHZ=$(CPU_MHZ) $(EXTRA_DEFS)
+DEFS        = -DRTOS_CPU_MHZ=$(CPU_MHZ) $(HW_DEFS) $(EXTRA_DEFS)
 
 INCLUDES = -I$(SRC_DIR) -I$(FR)/include -I$(FR)/portable/GCC/ARM_CM3
 
@@ -39,10 +61,10 @@ CFLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft \
 ASFLAGS = -mcpu=cortex-m4 -mthumb -mfloat-abi=soft -g
 
 LIBGCC  = $(shell $(CC) $(CFLAGS) -print-libgcc-file-name)
-LDFLAGS = -T $(LD_DIR)/linker.ld -Wl,--gc-sections -Wl,-Map=$(TARGET).map \
+LDFLAGS = -T $(LDSCRIPT) -Wl,--gc-sections -Wl,-Map=$(TARGET).map \
           -nostdlib -nostartfiles -mcpu=cortex-m4 -mthumb -mfloat-abi=soft
 
-APP_SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/stats.c $(SRC_DIR)/gpio.c $(SRC_DIR)/libc_stubs.c
+APP_SRCS = $(SRC_DIR)/main.c $(SRC_DIR)/stats.c $(SRC_DIR)/gpio.c $(SRC_DIR)/clock.c $(SRC_DIR)/libc_stubs.c
 FR_SRCS  = $(FR)/tasks.c $(FR)/queue.c $(FR)/list.c \
            $(FR)/portable/GCC/ARM_CM3/port.c $(FR)/portable/MemMang/heap_4.c
 
@@ -53,7 +75,7 @@ OBJS = $(addprefix $(BUILD_DIR)/app_,$(notdir $(APP_SRCS:.c=.o))) \
 QEMU = qemu-system-arm -machine olimex-stm32-h405 -nographic \
        -semihosting-config enable=on,target=native -kernel $(TARGET).elf
 
-.PHONY: all clean qemu bench-jitter bench-ipc bench-ctxsw FORCE
+.PHONY: all clean qemu bench-jitter bench-ipc bench-ctxsw flash run-hw FORCE
 
 all: $(BUILD_DIR) $(TARGET).elf $(TARGET).bin
 	@echo "\n=== FreeRTOS baseline build complete ==="
@@ -103,3 +125,14 @@ clean:
 
 qemu: $(TARGET).elf
 	$(QEMU)
+
+# ---- Flash and run on hardware (same as rtos_kernel) ------------
+# make bench-jitter HW=1 BOARD=blackpill && make run-hw
+OPENOCD = openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+
+flash: $(TARGET).bin
+	st-flash --reset write $(TARGET).bin 0x08000000
+
+run-hw: $(TARGET).elf
+	$(OPENOCD) -c "program $(TARGET).elf verify" -c "reset halt" \
+	    -c "arm semihosting enable" -c "resume"
